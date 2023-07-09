@@ -1,0 +1,11 @@
+{
+    "gamepad-name":"Microsoft Xbox One X pad",
+    "transmitter":{
+        "device":"/dev/ttyAMA0",
+        "baud-rate":9600,
+        "pin_aux":11,    
+        "pin_m0":15,    
+        "pin_m1":13,
+        "parameters" : "0000180040"
+    }
+}

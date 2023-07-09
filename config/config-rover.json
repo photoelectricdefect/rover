@@ -1,0 +1,10 @@
+{
+    "reciever":{
+        "device":"/dev/ttyUSB0",
+        "baud-rate":9600,
+        "pin_aux":11,    
+        "pin_m0":15,    
+        "pin_m1":13,
+        "parameters":"0000180040"    
+    }
+}
