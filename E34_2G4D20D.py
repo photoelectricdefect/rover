@@ -135,17 +135,34 @@ class E34_2G4D20D():
 
         return True
 
-    def is_ready(self):
-        return self.is_aux_high
+    def wait_aux_rising_timeout(self,timeout_ms):
+        t_ms_now=time.time_ns() / 1e6
+
+        while not GPIO.event_detected(self.pin_aux):
+            dt_ms=(time.time_ns() / 1e6) - t_ms_now
+
+            if dt_ms > timeout_ms:
+                return False
+
+            continue
+
+        return True
+
+    # def is_ready(self):
+    #     return self.is_aux_high
 
     def write(self,data,timeout_s):
         # with self.cv_aux:
             # is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
             
             # if is_ready:
-        if GPIO.event_detected(self.pin_aux):
+        is_ready=self.wait_aux_rising_timeout(2)
+
+        if is_ready:
             # self.is_aux_high = False
             self.serial_port.write(data)
+
+        return is_ready
 
     def read(self,length,timeout_s):
         # with self.cv_aux:
@@ -183,7 +200,9 @@ class E34_2G4D20D():
             # is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
             
             # if is_ready:
-        if GPIO.event_detected(self.pin_aux):
+        # is_ready=self.wait_aux_rising_timeout(2)
+
+        if self.wait_aux_rising_timeout(2):
             pins_state = self.PINS_BY_MODE[mode]
             GPIO.output(self.pin_m0, pins_state["pin_m0"])
             GPIO.output(self.pin_m1, pins_state["pin_m1"])
@@ -191,11 +210,13 @@ class E34_2G4D20D():
             if self.mode == "setting" and mode != "setting":
                 # self.is_aux_high = False
                 # GPIO.event_detected(self.pin_aux)
-                GPIO.wait_for_edge(self.pin_aux, GPIO.RISING)
-                time.sleep(self.DT_S_MODE_SET_E34)
+                # GPIO.wait_for_edge(self.pin_aux, GPIO.RISING)
+                if not self.wait_aux_rising_timeout(2):
+                    return False
 
+            time.sleep(self.DT_S_MODE_SET_E34)
             self.mode = mode
 
             return True
-
+        
         return False
