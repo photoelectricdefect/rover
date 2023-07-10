@@ -165,10 +165,16 @@ class rover:
         
         while loop_input_alive():
             try:
+                t_ms_now=time.time_ns() / 1e6
+
                 data=self.module_E34.serial_port.read_until('\n'.encode())
+                
+
                 print(data)
+
                 time.sleep(self.DELAY_INPUT_LOOP)
-                # print(self.motion_state)
+                t_ms_after=time.time_ns() / 1e6
+                print(t_ms_after-t_ms_now)
             except (OSError) as ex:
                 raise ex
                 # print(ex)
