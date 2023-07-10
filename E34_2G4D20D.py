@@ -25,6 +25,9 @@ class E34_2G4D20D():
 
     MODES=["half-duplex","full-duplex","reservation","setting"]
 
+    # PARAMETERS_MODE_SETTING = bytearray([0x00,0x00,0x18,0x00,0x40])
+    BAUD_RATE_MODE_SETTING = 9600
+
     DT_S_SERIAL_OPEN=2
     TIMEOUT_S_SERIAL_WRITE=2
     TIMEOUT_S_SERIAL_READ=2
@@ -61,7 +64,9 @@ class E34_2G4D20D():
         GPIO.setup(self.pin_m0, GPIO.OUT)
         GPIO.setup(self.pin_m1, GPIO.OUT)
 
-        self.serial_port = serial.Serial(port=self.device, baudrate=self.baud_rate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS)
+        print(self.baud_rate)
+
+        self.serial_port = serial.Serial(port=self.device, baudrate=self.BAUD_RATE_MODE_SETTING, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS)
         self.serial_port.timeout=self.TIMEOUT_S_SERIAL_READ
         self.serial_port.timeout_write=self.TIMEOUT_S_SERIAL_READ
 
@@ -76,16 +81,25 @@ class E34_2G4D20D():
 
         self.serial_port.write(bytearray([0xC0])+self.parameters)
         success=self.wait_aux_rising_timeout(2000)
+        
+        print(self.parameters)
+        # print(success)
 
         if success:
             self.serial_port.write(bytearray([0xC1,0xC1,0xC1]))
             success=self.wait_aux_rising_timeout(2000)
 
+        # print(success)
+        
         if success:
             params=self.serial_port.read(6)
 
-        if self.parameters != params[1:] or params is None:
-            success=False
+            if self.parameters != params[1:] or params is None:
+                success=False
+
+            print(params)
+
+        # print(success)
                 
         if success:
             self.set_mode("half-duplex")        
@@ -93,7 +107,8 @@ class E34_2G4D20D():
 
         if success:
             time.sleep(self.DT_S_MODE_SET_E34)
-
+            self.serial_port.baudrate=self.baud_rate
+            
         if not success:
             raise Exception("error initializing module") 
 

@@ -66,7 +66,7 @@ class rover:
     DELAY_RESTART_MAIN_LOOP=3
     DELAY_RESTART_LOOP_INPUT=3
     DELAY_MAIN_LOOP=0.005
-    DELAY_INPUT_LOOP=0.01
+    DELAY_INPUT_LOOP=0.001
 
     module_E34=None
     # controller_name=None
