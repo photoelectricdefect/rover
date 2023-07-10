@@ -35,7 +35,9 @@ class E34_2G4D20D():
 
     mode=None
 
-    is_aux_high=False
+    # is_initialized=False
+
+    # is_aux_high=False
     cv_aux = threading.Condition()
 
     device=None
@@ -53,10 +55,7 @@ class E34_2G4D20D():
         self.pin_aux=pin_aux
         self.parameters=parameters
 
-    def init(self):
-        self.mode=None
-        self.is_aux_high = True
-
+    def init(self):        
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin_aux, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.pin_m0, GPIO.OUT)
@@ -70,28 +69,43 @@ class E34_2G4D20D():
                 
         self.wait_aux_high_timeout(self.DT_MS_INIT_E34)
 
-        GPIO.add_event_detect(self.pin_aux,GPIO.RISING)
-        # GPIO.add_event_callback(self.pin_aux,self.on_aux_rise)
+        time.sleep(self.DT_S_MODE_SET_E34)
+        self.set_mode("setting")
 
-        self.set_mode("setting",2)
-        self.write(bytearray([0xC0])+self.parameters,2)
-        self.write(bytearray([0xC1,0xC1,0xC1]),2)        
-        params=self.read(6,2)
-        
-        # print(params)
+        GPIO.add_event_detect(self.pin_aux,GPIO.RISING)
+
+        self.serial_port.write(bytearray([0xC0])+self.parameters)
+        success=self.wait_aux_rising_timeout(2000)
+
+        if success:
+            self.serial_port.write(bytearray([0xC1,0xC1,0xC1]))
+            success=self.wait_aux_rising_timeout(2000)
+
+        if success:
+            params=self.serial_port.read(6)
 
         if self.parameters != params[1:] or params is None:
-            raise Exception("error fetching params from module") 
+            success=False
+                
+        if success:
+            self.set_mode("half-duplex")        
+            success=self.wait_aux_rising_timeout(2000)
 
-        self.set_mode("half-duplex",2)
+        if success:
+            time.sleep(self.DT_S_MODE_SET_E34)
+
+        if not success:
+            raise Exception("error initializing module") 
 
         print("E34_2G4D20D module initialized")
 
+    def deinit(self):
+        self.serial_port.close()
+        GPIO.remove_event_detect(self.pin_aux)
+        GPIO.cleanup()
+
     #temporary, remove
     def init0(self):
-        self.mode=None
-        self.is_aux_high = True
-
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin_aux, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.pin_m0, GPIO.OUT)
@@ -102,21 +116,6 @@ class E34_2G4D20D():
         self.serial_port.timeout_write=self.TIMEOUT_S_SERIAL_READ
 
         time.sleep(self.DT_S_SERIAL_OPEN)
-                
-        self.wait_aux_high_timeout(self.DT_MS_INIT_E34)
-
-        GPIO.add_event_detect(self.pin_aux,GPIO.RISING)
-        # GPIO.add_event_callback(self.pin_aux,self.on_aux_rise)
-
-        # self.set_mode("setting",2)
-        # self.write(bytearray([0xC0])+self.parameters,2)
-        # self.write(bytearray([0xC1,0xC1,0xC1]),2)        
-        # params=self.read(6,2)
-        
-        # if self.parameters != params[1:] or params is None:
-        #     raise Exception("error fetching params from module") 
-
-        # self.set_mode("half-duplex",2)
 
     def wait_aux_high(self):
         while GPIO.input(self.pin_aux) != GPIO.HIGH:
@@ -148,39 +147,44 @@ class E34_2G4D20D():
 
         return True
 
+    def set_mode(self,mode):
+        self.mode = mode
+        pins_state = self.PINS_BY_MODE[self.mode]
+        GPIO.output(self.pin_m0, pins_state["pin_m0"])
+        GPIO.output(self.pin_m1, pins_state["pin_m1"])
+
     # def is_ready(self):
     #     return self.is_aux_high
 
-    def write(self,data,timeout_s):
-        # with self.cv_aux:
-            # is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
+    # def write(self,data,timeout_s):
+    #     # with self.cv_aux:
+    #         # is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
             
-            # if is_ready:
-        is_ready=self.wait_aux_rising_timeout(2)
+    #         # if is_ready:
+    #     is_ready=self.wait_aux_rising_timeout(2000)
 
-        if is_ready:
-            # self.is_aux_high = False
-            self.serial_port.write(data)
+    #     if is_ready:
+    #         self.serial_port.write(data)
 
-        return is_ready
+    #     return is_ready
 
-    def read(self,length,timeout_s):
-        # with self.cv_aux:
-        #     is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
+    # def read(self,length,timeout_s):
+    #     # with self.cv_aux:
+    #     #     is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
 
-        #     if is_ready:
-                # self.is_aux_high = False
+    #     #     if is_ready:
+    #             # self.is_aux_high = False
 
-        return self.serial_port.read(length)
+    #     return self.serial_port.read(length)
 
-    def read_until(self,delim,timeout_s):
-        # with self.cv_aux:
-        #     is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
+    # def read_until(self,delim,timeout_s):
+    #     # with self.cv_aux:
+    #     #     is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
 
-        #     if is_ready:
-                # self.is_aux_high = False
+    #     #     if is_ready:
+    #             # self.is_aux_high = False
                 
-        return self.serial_port.read_until(delim)
+    #     return self.serial_port.read_until(delim)
 
     # def on_aux_rise(self,event):
         # print("rise")
@@ -189,34 +193,24 @@ class E34_2G4D20D():
         #     self.is_aux_high = True
         #     self.cv_aux.notify_all()
 
-
-    def deinit(self):
-        self.serial_port.close()
-        GPIO.remove_event_detect(self.pin_aux)
-        GPIO.cleanup()
-
-    def set_mode(self,mode,timeout_s):
         # with self.cv_aux:
             # is_ready=self.cv_aux.wait_for(self.is_ready,timeout_s)
             
             # if is_ready:
         # is_ready=self.wait_aux_rising_timeout(2)
 
-        if self.wait_aux_rising_timeout(2):
-            pins_state = self.PINS_BY_MODE[mode]
-            GPIO.output(self.pin_m0, pins_state["pin_m0"])
-            GPIO.output(self.pin_m1, pins_state["pin_m1"])
-            
-            if self.mode == "setting" and mode != "setting":
-                # self.is_aux_high = False
-                # GPIO.event_detected(self.pin_aux)
-                # GPIO.wait_for_edge(self.pin_aux, GPIO.RISING)
-                if not self.wait_aux_rising_timeout(2):
-                    return False
+        # if self.wait_aux_rising_timeout(2000):
+        #     time.sleep(self.DT_S_MODE_SET_E34)
+        #     pins_state = self.PINS_BY_MODE[mode]
+        #     GPIO.output(self.pin_m0, pins_state["pin_m0"])
+        #     GPIO.output(self.pin_m1, pins_state["pin_m1"])
 
-            time.sleep(self.DT_S_MODE_SET_E34)
-            self.mode = mode
+        #     # if self.mode == "setting" and mode != "setting":
+        #     #     if not self.wait_aux_rising_timeout(2000):
+        #     #         return False
 
-            return True
+        #     self.mode = mode
+
+        #     return True
         
-        return False
+        # return False

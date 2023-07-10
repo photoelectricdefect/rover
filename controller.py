@@ -26,7 +26,7 @@ class controller:
 
     DELAY_RESTART_MAIN_LOOP=3
     DELAY_RESTART_LOOP_INPUT=3
-    DELAY_MAIN_LOOP=0.01
+    DELAY_MAIN_LOOP=0.001
     DELAY_INPUT_LOOP=0.001
     DELAY_START=2
     
@@ -102,8 +102,12 @@ class controller:
                     motion_state=self.motion_state
 
                 data=(json.dumps(motion_state)+'\n').encode()
-                self.module_E34.write(data,2)
+                self.module_E34.serial_port.write(data)
+                # success=self.module_E34.wait_aux_rising_timeout(2000)
+
+                # self.module_E34.write(data,2)
                 print(data)
+                # print(err)
 
                 time.sleep(self.DELAY_MAIN_LOOP)
             except Exception as ex:

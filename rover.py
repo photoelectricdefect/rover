@@ -165,7 +165,7 @@ class rover:
         
         while loop_input_alive():
             try:
-                data=self.module_E34.read_until('\n'.encode(),2)
+                data=self.module_E34.serial_port.read_until('\n'.encode())
                 print(data)
                 time.sleep(self.DELAY_INPUT_LOOP)
                 # print(self.motion_state)
