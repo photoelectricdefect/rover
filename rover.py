@@ -13,6 +13,7 @@ import traceback
 import logging
 import RPi.GPIO as GPIO
 from E34_2G4D20D import E34_2G4D20D
+import numpy as np
 
 # from reciever import reciever
 
@@ -165,16 +166,17 @@ class rover:
         
         while loop_input_alive():
             try:
-                t_ms_now=time.time_ns() / 1e6
+                # t_ms_now=time.time_ns() / 1e6
 
                 data=self.module_E34.serial_port.read_until('\n'.encode())
-                
-
                 print(data)
 
+                params = json.loads(data)
+                (omega_l,omega_r)=get_control_inputs(params["joystick_x"],params["gas"])
+
                 time.sleep(self.DELAY_INPUT_LOOP)
-                t_ms_after=time.time_ns() / 1e6
-                print(t_ms_after-t_ms_now)
+                # t_ms_after=time.time_ns() / 1e6
+                # print(t_ms_after-t_ms_now)
             except (OSError) as ex:
                 raise ex
                 # print(ex)
@@ -182,6 +184,23 @@ class rover:
                 # if loop_input_alive():
                 #     time.sleep(self.DELAY_RESTART_LOOP_INPUT)
 
+
+    def get_control_inputs(self,joystick_x,gas):
+        sign_joystick_x=np.sign(joystick_x)
+        omega_l=0
+        omega_r=0
+
+        if sign_joystick_x < 0:
+            omega_l=(1+joystick_x)*gas
+            omega_r=gas
+        elif sign_joystick_x == 0:
+            omega_l=gas
+            omega_r=gas
+        else:
+            omega_l=gas
+            omega_r=(1-joystick_x)*gas
+
+        return (omega_l,omega_r)
 
 
     # def set_left_motor_stationary(self):
