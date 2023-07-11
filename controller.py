@@ -54,13 +54,19 @@ class controller:
         cftx=self.config["transmitter"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
+    def init(self):
+        GPIO.setmode(GPIO.BOARD)        
+        self.module_E34.init()
+
+    def deinit(self):
+        self.module_E34.deinit()
+        GPIO.cleanup()
+
     #TODO: exception handling,timing between control and input thread is fucked because too many events are read (read events less often),...
     def start(self):
         errcode=0
 
         try:
-            self.module_E34.init()
-
             self.thread_loop_input = threading.Thread(target=self.loop_input)
             self.thread_loop_input.start()
             
@@ -234,4 +240,7 @@ if __name__ == "__main__":
 
     path_config="config/config-controller.json"
     ctrlr=controller(path_config)
+    ctrlr.init()
     ctrlr.start()
+    ctrlr.deinit()
+

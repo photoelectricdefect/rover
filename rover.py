@@ -18,18 +18,27 @@ import numpy as np
 # from reciever import reciever
 
 class rover:
-    # PIN_LEFT_MOTOR_PWM = 33
-    # PIN_RIGHT_MOTOR_PWM = 31
+    PIN_PWM_MOTOR_LEFT_FRONT = 29
+    PIN_PWM_MOTOR_LEFT_BACK = 31
 
-    # PIN_LEFT_MOTOR_A = 37
-    # PIN_LEFT_MOTOR_B = 35
-    # PIN_RIGHT_MOTOR_A = 38
-    # PIN_RIGHT_MOTOR_B = 36
+    PIN_PWM_MOTOR_RIGHT_FRONT = 33
+    PIN_PWM_MOTOR_RIGHT_BACK = 35
+
+    PIN_MOTOR_LEFT_FRONT_A = 19
+    PIN_MOTOR_LEFT_FRONT_B = 21
+    PIN_MOTOR_LEFT_BACK_A = 23
+    PIN_MOTOR_LEFT_BACK_B = 37
+
+    PIN_MOTOR_RIGHT_FRONT_A = 32
+    PIN_MOTOR_RIGHT_FRONT_B = 36
+    PIN_MOTOR_RIGHT_BACK_A = 38
+    PIN_MOTOR_RIGHT_BACK_B = 40
+
 
     # PWM_CHANNEL_MOTOR_LEFT = 0 
     # PWM_CHANNEL_MOTOR_RIGHT = 1 
 
-    # PWM_FREQUENCY = 5000 
+    PWM_FREQUENCY = 2000 
     # PWM_RESOLUTION = 8
 
     # MIN_GAS=5e-2
@@ -79,13 +88,45 @@ class rover:
         cftx=self.config["reciever"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
+    def init(self):
+        GPIO.setmode(GPIO.BOARD)
+
+        GPIO.setup(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.OUT)
+        GPIO.setup(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.OUT)
+        GPIO.setup(self.PIN_MOTOR_LEFT_BACK_A, GPIO.OUT)
+        GPIO.setup(self.PIN_MOTOR_LEFT_BACK_B, GPIO.OUT)
+
+        GPIO.setup(self.PIN_MOTOR_RIGHT_FRONT_A, GPIO.OUT)
+        GPIO.setup(self.PIN_MOTOR_RIGHT_FRONT_B, GPIO.OUT)
+        GPIO.setup(self.PIN_MOTOR_RIGHT_BACK_A, GPIO.OUT)
+        GPIO.setup(self.PIN_MOTOR_RIGHT_BACK_B, GPIO.OUT)
+
+        GPIO.setup(self.PIN_PWM_MOTOR_LEFT_FRONT, GPIO.OUT)
+        GPIO.setup(self.PIN_PWM_MOTOR_LEFT_BACK, GPIO.OUT)
+
+        GPIO.setup(self.PIN_PWM_MOTOR_RIGHT_FRONT, GPIO.OUT)
+        GPIO.setup(self.PIN_PWM_MOTOR_RIGHT_BACK, GPIO.OUT)
+
+        self.pwm_motor_left_front = GPIO.PWM(self.PIN_PWM_MOTOR_LEFT_FRONT, self.PWM_FREQUENCY)
+        self.pwm_motor_left_back = GPIO.PWM(self.PIN_PWM_MOTOR_LEFT_BACK, self.PWM_FREQUENCY)
+        self.pwm_motor_right_front = GPIO.PWM(self.PIN_PWM_MOTOR_RIGHT_FRONT, self.PWM_FREQUENCY)
+        self.pwm_motor_right_back = GPIO.PWM(self.PIN_PWM_MOTOR_RIGHT_BACK, self.PWM_FREQUENCY)
+
+        self.pwm_motor_left_front.start(0)
+        self.pwm_motor_left_back.start(0)
+        self.pwm_motor_right_front.start(0)
+        self.pwm_motor_right_back.start(0)
+        
+        self.module_E34.init0()
+
+    def deinit(self):
+        self.module_E34.deinit()
+        GPIO.cleanup()
 
     def start(self):
         errcode=0
 
         try:            
-            self.module_E34.init0()
-
             self.thread_loop_input = threading.Thread(target=self.loop_input)
             self.thread_loop_input.start()
             
@@ -177,8 +218,10 @@ class rover:
                 time.sleep(self.DELAY_INPUT_LOOP)
                 # t_ms_after=time.time_ns() / 1e6
                 # print(t_ms_after-t_ms_now)
-            except (OSError) as ex:
-                raise ex
+            except (ValueError) as ex:
+                continue
+            # except (OSError) as ex:
+            #     raise ex
                 # print(ex)
             # finally:
                 # if loop_input_alive():
@@ -200,32 +243,49 @@ class rover:
             omega_l=gas
             omega_r=(1-joystick_x)*gas
 
+        omega_l=max(min(omega_l,1),-1)
+        omega_r=max(min(omega_r,1),-1)
+
         return (omega_l,omega_r)
 
 
-    # def set_left_motor_stationary(self):
-    #     GPIO.output(self.PIN_LEFT_MOTOR_A, GPIO.LOW)
-    #     GPIO.output(self.PIN_LEFT_MOTOR_B, GPIO.LOW)
+    def set_left_motors_stationary(self): 
+        GPIO.output(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.LOW)
 
-    # def set_left_motor_clockwise(self): 
-    #     GPIO.output(self.PIN_LEFT_MOTOR_A, GPIO.LOW)
-    #     GPIO.output(self.PIN_LEFT_MOTOR_B, GPIO.HIGH)
+    def set_left_motors_clockwise(self):
+        GPIO.output(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.LOW)
 
-    # def set_left_motor_counter_clockwise(self): 
-    #     GPIO.output(self.PIN_LEFT_MOTOR_A, GPIO.HIGH)
-    #     GPIO.output(self.PIN_LEFT_MOTOR_B, GPIO.LOW)
+    def set_left_motors_counter_clockwise(self): 
+        GPIO.output(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.HIGH)
 
-    # def set_right_motor_stationary(self): 
-    #     GPIO.output(self.PIN_RIGHT_MOTOR_A, GPIO.LOW)
-    #     GPIO.output(self.PIN_RIGHT_MOTOR_B, GPIO.LOW)
 
-    # def set_right_motor_clockwise(self):
-    #     GPIO.output(self.PIN_RIGHT_MOTOR_A, GPIO.LOW)
-    #     GPIO.output(self.PIN_RIGHT_MOTOR_B, GPIO.HIGH)
 
-    # def set_right_motor_counter_clockwise(self):
-    #     GPIO.output(self.PIN_RIGHT_MOTOR_A, GPIO.HIGH)
-    #     GPIO.output(self.PIN_RIGHT_MOTOR_B, GPIO.LOW)
+    def set_right_motors_stationary(self): 
+        GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_B, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_RIGHT_BACK_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_RIGHT_BACK_B, GPIO.LOW)
+
+    def set_right_motors_clockwise(self):
+        GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_A, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_B, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_RIGHT_BACK_A, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_RIGHT_BACK_B, GPIO.LOW)
+
+    def set_right_motors_counter_clockwise(self): 
+        GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_B, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_RIGHT_BACK_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_RIGHT_BACK_B, GPIO.HIGH)
 
 
 def print_ex(ex):
@@ -245,4 +305,6 @@ if __name__ == "__main__":
     # controller=tank_controller(controller_name)
     path_config="config/config-rover.json"
     rvr=rover(path_config)
+    rvr.init()
     rvr.start()
+    rvr.deinit()

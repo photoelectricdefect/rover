@@ -59,7 +59,6 @@ class E34_2G4D20D():
         self.parameters=parameters
 
     def init(self):        
-        GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin_aux, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.pin_m0, GPIO.OUT)
         GPIO.setup(self.pin_m1, GPIO.OUT)
@@ -117,11 +116,9 @@ class E34_2G4D20D():
     def deinit(self):
         self.serial_port.close()
         GPIO.remove_event_detect(self.pin_aux)
-        GPIO.cleanup()
 
     #temporary, remove
     def init0(self):
-        GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin_aux, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.pin_m0, GPIO.OUT)
         GPIO.setup(self.pin_m1, GPIO.OUT)
