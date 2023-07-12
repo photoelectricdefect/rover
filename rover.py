@@ -60,18 +60,38 @@ class rover:
 
     # main_loop_alive_lock = threading.Lock()
     # rx_loop_alive_lock = threading.Lock()
-    # motion_state_lock = threading.Lock()
+    controller_state_lock = threading.Lock()
 
-    # motion_state = {
-    #     "left":0,
-    #     "right":0,
-    # }
+    is_controller_state_updated=False
+    controller_state = {
+        "gas":0,
+        "gas_R":0,
+    }
+
+    motion_state_lock = threading.Lock()
+
+    is_motion_state_updated=False
+    motion_state = {
+        "omega_L":0,
+        "omega_R":0,
+    }
 
     main_loop_alive=True
     loop_input_alive=True
 
     main_loop_alive_lock = threading.Lock()
     loop_input_alive_lock = threading.Lock()
+
+    TIMEOUT_S_SERIAL_READ=0.3
+
+    is_input_timed_out=False
+    timestamp_ns_input_timed_out=-1
+    motion_state_input_timed_out=None
+
+    T_ROVER_MOTION_HALT_S=0.8
+    # N_STEPS_ROVER_MOTION_HALT_MAX=50
+
+    n_steps_rover_motion_halt=0
 
     DELAY_RESTART_MAIN_LOOP=3
     DELAY_RESTART_LOOP_INPUT=3
@@ -88,7 +108,7 @@ class rover:
         cftx=self.config["reciever"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
-    def init(self):
+    def start(self):
         GPIO.setmode(GPIO.BOARD)
 
         GPIO.setup(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.OUT)
@@ -118,42 +138,34 @@ class rover:
         self.pwm_motor_right_back.start(0)
         
         self.module_E34.init0()
+        self.module_E34.serial_port.timeout=self.TIMEOUT_S_SERIAL_READ
 
-    def deinit(self):
+        self.thread_loop_input = threading.Thread(target=self.loop_input)
+        self.thread_loop_input.start()
+        
+        self.thread_main_loop = threading.Thread(target=self.main_loop)
+        self.thread_main_loop.start()
+    
+        threading.excepthook = self.thread_excepthook
+
+        self.thread_main_loop.join()
+
         self.module_E34.deinit()
         GPIO.cleanup()
-
-    def start(self):
-        errcode=0
-
-        try:            
-            self.thread_loop_input = threading.Thread(target=self.loop_input)
-            self.thread_loop_input.start()
-            
-            self.thread_main_loop = threading.Thread(target=self.main_loop)
-            self.thread_main_loop.start()
-        
-            self.thread_main_loop.join()
-            self.thread_loop_input.join()        
-        except KeyboardInterrupt as ex:
-            errcode=1
-        except Exception as ex:
-            # print_ex(ex)
-            logging.error(traceback.format_exc())
-            errcode=1
-        finally:
-            with self.main_loop_alive_lock:
-                self.main_loop_alive=False
-
-            with self.loop_input_alive_lock:            
-                self.loop_input_alive=False
-            
-            sys.exit(errcode)
 
     def load_config(self,path_config):
         f=open(path_config)
         self.config=json.load(f)
         self.config["reciever"]["parameters"]=bytearray.fromhex(self.config["reciever"]["parameters"])
+
+    def thread_excepthook(self,args):
+        logging.error(traceback.format_exc())
+
+        with self.main_loop_alive_lock:
+            self.main_loop_alive=False
+
+        with self.loop_input_alive_lock:            
+            self.loop_input_alive=False
 
     def main_loop(self):
         def main_loop_alive():
@@ -162,6 +174,47 @@ class rover:
 
         while main_loop_alive():
             try:
+                is_input_timed_out=False
+                controller_state=None
+
+                with self.controller_state_lock:
+                    is_input_timed_out=self.is_input_timed_out
+                    
+                    if not is_input_timed_out:
+                        controller_state=self.controller_state
+
+                if is_input_timed_out:
+                    timestamp_ns_now=time.time_ns()
+
+                    if self.timestamp_ns_input_timed_out < 0:
+                        self.timestamp_ns_input_timed_out = timestamp_ns_now
+                        self.motion_state_input_timed_out = self.motion_state
+                    elif self.timestamp_ns_input_timed_out < timestamp_ns_now:
+                        omega_L=self.motion_state_input_timed_out["omega_L"]
+                        omega_R=self.motion_state_input_timed_out["omega_R"]
+                        dt_input_timed_out_ns=timestamp_ns_now-self.timestamp_ns_input_timed_out
+                        weight=dt_input_timed_out_ns/(self.T_ROVER_MOTION_HALT_S * 1e9)
+                        self.motion_state["omega_L"]=max(omega_L*(1-weight),0)
+                        self.motion_state["omega_R"]=max(omega_R*(1-weight),0)
+                else:
+                    self.timestamp_ns_input_timed_out = -1
+                    (omega_L,omega_R)=self.get_control_inputs(self.controller_state["gas"],self.controller_state["gas_r"])
+                    self.motion_state["omega_L"]=omega_L
+                    self.motion_state["omega_R"]=omega_R
+
+                print(self.motion_state)
+
+                    # DT_ROVER_MOTION_HALT_S=0.8
+                    # N_STEPS_ROVER_MOTION_HALT=50
+
+                    # omega_L=motion_state["omega_L"]
+                    # omega_R=motion_state["omega_R"]
+                                        
+                    # motion_state = {
+                    #     "omega_L":0,
+                    #     "omega_R":0,
+                    # }
+
                 # left=0
                 # right=0
                 
@@ -213,38 +266,40 @@ class rover:
                 print(data)
 
                 params = json.loads(data)
-                (omega_l,omega_r)=get_control_inputs(params["joystick_x"],params["gas"])
+
+                with self.controller_state_lock:
+                    self.is_input_timed_out=False
+                    self.controller_state["gas"]=params["gas"]
+                    self.controller_state["gas_R"]=params["gas_r"]
 
                 time.sleep(self.DELAY_INPUT_LOOP)
                 # t_ms_after=time.time_ns() / 1e6
                 # print(t_ms_after-t_ms_now)
             except (ValueError) as ex:
+                with self.controller_state_lock:
+                    self.is_input_timed_out=True
+
                 continue
-            # except (OSError) as ex:
-            #     raise ex
-                # print(ex)
-            # finally:
-                # if loop_input_alive():
-                #     time.sleep(self.DELAY_RESTART_LOOP_INPUT)
 
 
-    def get_control_inputs(self,joystick_x,gas):
-        sign_joystick_x=np.sign(joystick_x)
-        omega_l=0
-        omega_r=0
+    # Update
+    def get_control_inputs(self,gas,gas_r):
+        # sign_joystick_x=np.sign(joystick_x)
+        # omega_l=0
+        # omega_r=0
 
-        if sign_joystick_x < 0:
-            omega_l=(1+joystick_x)*gas
-            omega_r=gas
-        elif sign_joystick_x == 0:
-            omega_l=gas
-            omega_r=gas
-        else:
-            omega_l=gas
-            omega_r=(1-joystick_x)*gas
+        # if sign_joystick_x < 0:
+        #     omega_l=(1+joystick_x)*gas
+        #     omega_r=gas
+        # elif sign_joystick_x == 0:
+        #     omega_l=gas
+        #     omega_r=gas
+        # else:
+        #     omega_l=gas
+        #     omega_r=(1-joystick_x)*gas
 
-        omega_l=max(min(omega_l,1),-1)
-        omega_r=max(min(omega_r,1),-1)
+        omega_l=max(min(gas,1),-1)
+        omega_r=max(min(gas_r,1),-1)
 
         return (omega_l,omega_r)
 
@@ -305,6 +360,8 @@ if __name__ == "__main__":
     # controller=tank_controller(controller_name)
     path_config="config/config-rover.json"
     rvr=rover(path_config)
-    rvr.init()
-    rvr.start()
-    rvr.deinit()
+    
+    try:
+        rvr.start()
+    except Exception as ex:
+        logging.error(traceback.format_exc())

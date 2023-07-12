@@ -1,5 +1,5 @@
 {
-    "gamepad-name":"Microsoft Xbox One X pad",
+    "gamepad-name":"Microsoft Xbox Series S|X Controller",
     "transmitter":{
         "device":"/dev/ttyAMA0",
         "baud-rate":115200,

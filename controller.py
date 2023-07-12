@@ -16,6 +16,8 @@ import RPi.GPIO as GPIO
 from E34_2G4D20D import E34_2G4D20D
 from select import select
 
+errcode=0
+
 class controller:
     MIN_GAS=5e-2
 
@@ -35,9 +37,9 @@ class controller:
 
     main_loop_alive_lock = threading.Lock()
     loop_input_alive_lock = threading.Lock()
-    motion_state_lock = threading.Lock()
+    controller_state_lock = threading.Lock()
 
-    motion_state = {
+    controller_state = {
         "joystick_x":0,
         "joystick_y":0,
         "gas":0,
@@ -54,41 +56,23 @@ class controller:
         cftx=self.config["transmitter"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
-    def init(self):
+    def start(self):
         GPIO.setmode(GPIO.BOARD)        
-        self.module_E34.init()
+        # self.module_E34.init()
+        self.module_E34.init0()
 
-    def deinit(self):
+        self.thread_loop_input = threading.Thread(target=self.loop_input)
+        self.thread_loop_input.start()
+        
+        self.thread_main_loop = threading.Thread(target=self.main_loop)
+        self.thread_main_loop.start()
+
+        threading.excepthook = self.thread_excepthook
+
+        self.thread_main_loop.join()
+
         self.module_E34.deinit()
         GPIO.cleanup()
-
-    #TODO: exception handling,timing between control and input thread is fucked because too many events are read (read events less often),...
-    def start(self):
-        errcode=0
-
-        try:
-            self.thread_loop_input = threading.Thread(target=self.loop_input)
-            self.thread_loop_input.start()
-            
-            self.thread_main_loop = threading.Thread(target=self.main_loop)
-            self.thread_main_loop.start()
-        
-            self.thread_main_loop.join()
-            self.thread_loop_input.join()
-        except KeyboardInterrupt as ex:
-            errcode=1
-        except Exception as ex:
-            # print_ex(ex)
-            logging.error(traceback.format_exc())
-            errcode=1
-        finally:
-            with self.main_loop_alive_lock:
-                self.main_loop_alive=False
-
-            with self.loop_input_alive_lock:            
-                self.loop_input_alive=False
-            
-            sys.exit(errcode)
 
     def load_config(self,path_config):
         f=open(path_config)
@@ -96,8 +80,14 @@ class controller:
         # print(self.config["transmitter"]["parameters"])
         self.config["transmitter"]["parameters"]=bytearray.fromhex(self.config["transmitter"]["parameters"])
 
-        # for el in self.config["transmitter"]["parameters"]:
-        #     print(el)
+    def thread_excepthook(self,args):
+        logging.error(traceback.format_exc())
+
+        with self.main_loop_alive_lock:
+            self.main_loop_alive=False
+
+        with self.loop_input_alive_lock:            
+            self.loop_input_alive=False
 
     def main_loop(self):
         def main_loop_alive():
@@ -106,28 +96,37 @@ class controller:
 
         while main_loop_alive():
             try:
-                motion_state=None
+                controller_state=None
 
-                with self.motion_state_lock:
-                    motion_state=self.motion_state
+                with self.controller_state_lock:
+                    controller_state=self.controller_state
 
-                data=(json.dumps(motion_state)+'\n').encode()
+                data=(json.dumps(controller_state)+'\n').encode()
                 # self.module_E34.serial_port.write(data)
                 t_ms_now=time.time_ns() / 1e6
 
+
+                print(data)
+
                 self.module_E34.serial_port.write(data)
+
+                print(data)
+
                 success=self.module_E34.wait_aux_rising_timeout(2000)
-                
+
                 time.sleep(self.DELAY_MAIN_LOOP)
             
                 t_ms_after=time.time_ns() / 1e6
                 print(t_ms_after-t_ms_now)
             except Exception as ex:
+                # print("asasasasasa")
                 raise ex
                 # print_ex(ex)
 
                 # if main_loop_alive():                
                 #     time.sleep(self.DELAY_RESTART_MAIN_LOOP)
+
+    #Microsoft Xbox One X pad
 
     def loop_input(self):
         def loop_input_alive():
@@ -148,6 +147,13 @@ class controller:
             try:
                 devices = [InputDevice(path) for path in list_devices()]
                 device = next((x for x in devices if x.name==self.controller_name), None)
+
+                # for el in devices:
+                #     print(el)
+
+                # print(devices)
+                # print(device)
+                # print(self.controller_name)
 
                 if device is None:
                     time.sleep(self.DELAY_RESTART_LOOP_INPUT)
@@ -184,34 +190,34 @@ class controller:
                     # print("asasasssssssssssssssss")
 
                     if event is not None:
-                        # print(categorize(event))
                         # print(event)
+                        # print(categorize(event))
 
                         if event.type == ecodes.EV_ABS:
                             if event.code == self.JOYSTICK_Y and abs_info_y is not None:
                                 normalized_y=min(max(event.value/abs_info_y[1].max,-1),1)
                                 
-                                with self.motion_state_lock:
-                                    self.motion_state["joystick_y"]=normalized_y
+                                with self.controller_state_lock:
+                                    self.controller_state["joystick_y"]=normalized_y
                             elif event.code == self.JOYSTICK_X and abs_info_x is not None:
                                 normalized_x=min(max(event.value/abs_info_x[1].max,-1),1)
                                 
-                                with self.motion_state_lock:
-                                    self.motion_state["joystick_x"]=normalized_x
+                                with self.controller_state_lock:
+                                    self.controller_state["joystick_x"]=normalized_x
                             elif event.code == self.GAS_RZ and abs_info_rz is not None:
                                 normalized_rz=min(max(event.value/abs_info_rz[1].max,-1),1)
 
-                                with self.motion_state_lock:
-                                    self.motion_state["gas"]=normalized_rz
+                                with self.controller_state_lock:
+                                    self.controller_state["gas"]=normalized_rz
                             elif event.code == self.GAS_Z and abs_info_z is not None:
                                 normalized_z=min(max(event.value/abs_info_z[1].max,-1),1)
 
-                                with self.motion_state_lock:
-                                    self.motion_state["gas_r"]=normalized_z
+                                with self.controller_state_lock:
+                                    self.controller_state["gas_r"]=normalized_z
         
 
                     time.sleep(self.DELAY_INPUT_LOOP)
-                    # print(self.motion_state)
+                    # print(self.controller_state)
             except (OSError) as ex:
                 print(ex)
             finally:
@@ -240,7 +246,9 @@ if __name__ == "__main__":
 
     path_config="config/config-controller.json"
     ctrlr=controller(path_config)
-    ctrlr.init()
-    ctrlr.start()
-    ctrlr.deinit()
+
+    try:
+        ctrlr.start()
+    except Exception as ex:
+        logging.error(traceback.format_exc())
 
