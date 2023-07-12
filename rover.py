@@ -60,17 +60,14 @@ class rover:
 
     # main_loop_alive_lock = threading.Lock()
     # rx_loop_alive_lock = threading.Lock()
-    controller_state_lock = threading.Lock()
 
-    is_controller_state_updated=False
+    controller_state_lock = threading.Lock()
     controller_state = {
         "gas":0,
-        "gas_R":0,
+        "gas_r":0,
     }
 
     motion_state_lock = threading.Lock()
-
-    is_motion_state_updated=False
     motion_state = {
         "omega_L":0,
         "omega_R":0,
@@ -190,15 +187,13 @@ class rover:
                         self.timestamp_ns_input_timed_out = timestamp_ns_now
                         self.motion_state_input_timed_out = self.motion_state
                     elif self.timestamp_ns_input_timed_out < timestamp_ns_now:
-                        omega_L=self.motion_state_input_timed_out["omega_L"]
-                        omega_R=self.motion_state_input_timed_out["omega_R"]
                         dt_input_timed_out_ns=timestamp_ns_now-self.timestamp_ns_input_timed_out
                         weight=dt_input_timed_out_ns/(self.T_ROVER_MOTION_HALT_S * 1e9)
-                        self.motion_state["omega_L"]=max(omega_L*(1-weight),0)
-                        self.motion_state["omega_R"]=max(omega_R*(1-weight),0)
+                        self.motion_state["omega_L"]=max(self.motion_state_input_timed_out["omega_L"]*(1-weight),0)
+                        self.motion_state["omega_R"]=max(self.motion_state_input_timed_out["omega_R"]*(1-weight),0)
                 else:
                     self.timestamp_ns_input_timed_out = -1
-                    (omega_L,omega_R)=self.get_control_inputs(self.controller_state["gas"],self.controller_state["gas_r"])
+                    (omega_L,omega_R)=self.get_control_inputs(controller_state["gas"],controller_state["gas_r"])
                     self.motion_state["omega_L"]=omega_L
                     self.motion_state["omega_R"]=omega_R
 
@@ -262,15 +257,19 @@ class rover:
             try:
                 # t_ms_now=time.time_ns() / 1e6
 
+                # self.controller_state["gas"]=1
+                # self.controller_state["gas_r"]=1
+
+
                 data=self.module_E34.serial_port.read_until('\n'.encode())
-                print(data)
+                # print(data)
 
                 params = json.loads(data)
 
                 with self.controller_state_lock:
                     self.is_input_timed_out=False
                     self.controller_state["gas"]=params["gas"]
-                    self.controller_state["gas_R"]=params["gas_r"]
+                    self.controller_state["gas_r"]=params["gas_r"]
 
                 time.sleep(self.DELAY_INPUT_LOOP)
                 # t_ms_after=time.time_ns() / 1e6
