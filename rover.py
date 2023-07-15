@@ -64,13 +64,13 @@ class rover:
     controller_state_lock = threading.Lock()
     controller_state = {
         "gas":0,
-        "gas_r":0,
+        "gas_r":0
     }
 
     motion_state_lock = threading.Lock()
     motion_state = {
         "omega_L":0,
-        "omega_R":0,
+        "omega_R":0
     }
 
     OMEGA_MIN=1e-3
@@ -304,9 +304,8 @@ class rover:
             except (ValueError) as ex:
                 with self.controller_state_lock:
                     self.is_input_timed_out=True
-
-                continue
-
+            except (KeyError) as ex:
+                pass
 
     # Update
     def get_control_inputs(self,controller_state):
