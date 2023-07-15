@@ -73,6 +73,8 @@ class rover:
         "omega_R":0,
     }
 
+    OMEGA_MIN=1e-3
+
     main_loop_alive=True
     loop_input_alive=True
 
@@ -83,9 +85,11 @@ class rover:
 
     is_input_timed_out=False
     timestamp_ns_input_timed_out=-1
-    motion_state_input_timed_out=None
+    motion_state_saved=None
 
     T_ROVER_MOTION_HALT_S=0.8
+    T_ROVER_MOTION_HALT_NS=T_ROVER_MOTION_HALT_S*1e9
+
     # N_STEPS_ROVER_MOTION_HALT_MAX=50
 
     n_steps_rover_motion_halt=0
@@ -134,7 +138,7 @@ class rover:
         self.pwm_motor_right_front.start(0)
         self.pwm_motor_right_back.start(0)
         
-        self.module_E34.init0()
+        self.module_E34.init()
         self.module_E34.serial_port.timeout=self.TIMEOUT_S_SERIAL_READ
 
         self.thread_loop_input = threading.Thread(target=self.loop_input)
@@ -185,21 +189,35 @@ class rover:
 
                     if self.timestamp_ns_input_timed_out < 0:
                         self.timestamp_ns_input_timed_out = timestamp_ns_now
-                        self.motion_state_input_timed_out = self.motion_state
+                        self.motion_state_saved = self.motion_state
                     elif self.timestamp_ns_input_timed_out < timestamp_ns_now:
                         dt_input_timed_out_ns=timestamp_ns_now-self.timestamp_ns_input_timed_out
-                        weight=dt_input_timed_out_ns/(self.T_ROVER_MOTION_HALT_S * 1e9)
-                        self.motion_state["omega_L"]=max(self.motion_state_input_timed_out["omega_L"]*(1-weight),0)
-                        self.motion_state["omega_R"]=max(self.motion_state_input_timed_out["omega_R"]*(1-weight),0)
+
+                        if dt_input_timed_out_ns < self.T_ROVER_MOTION_HALT_NS:
+                            weight=dt_input_timed_out_ns/self.T_ROVER_MOTION_HALT_NS
+                            self.motion_state["omega_L"]=self.motion_state_saved["omega_L"]*(1-weight)
+                            self.motion_state["omega_R"]=self.motion_state_saved["omega_R"]*(1-weight)
+                        else:
+                            self.motion_state["omega_L"]=0
+                            self.motion_state["omega_R"]=0
                 else:
                     self.timestamp_ns_input_timed_out = -1
-                    (omega_L,omega_R)=self.get_control_inputs(controller_state["gas"],controller_state["gas_r"])
+                    (omega_L,omega_R)=self.get_control_inputs(controller_state)
                     self.motion_state["omega_L"]=omega_L
                     self.motion_state["omega_R"]=omega_R
 
                 if self.motion_state["omega_R"] > 0.001:
                     print(self.motion_state)
 
+                omega_L=self.motion_state["omega_L"]
+                omega_R=self.motion_state["omega_R"]
+
+                if omega_L < self.OMEGA_MIN and omega_R < self.OMEGA_MIN:
+                    self.set_left_motors_stationary()
+                    self.set_right_motors_stationary()
+                else:
+                    self.set_left_motors_clockwise()
+                    self.set_right_motors_counter_clockwise()
                     # DT_ROVER_MOTION_HALT_S=0.8
                     # N_STEPS_ROVER_MOTION_HALT=50
 
@@ -283,7 +301,7 @@ class rover:
 
 
     # Update
-    def get_control_inputs(self,gas,gas_r):
+    def get_control_inputs(self,controller_state):
         # sign_joystick_x=np.sign(joystick_x)
         # omega_l=0
         # omega_r=0
@@ -297,6 +315,9 @@ class rover:
         # else:
         #     omega_l=gas
         #     omega_r=(1-joystick_x)*gas
+
+        gas=controller_state["gas"]
+        gas_r=controller_state["gas_r"]
 
         omega_l=max(min(gas,1),-1)
         omega_r=max(min(gas_r,1),-1)
