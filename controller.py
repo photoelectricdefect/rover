@@ -103,15 +103,15 @@ class controller:
 
                 data=(json.dumps(controller_state)+'\n').encode()
                 # self.module_E34.serial_port.write(data)
-                t_ms_now=time.time_ns() / 1e6
+                # t_ms_now=time.time_ns() / 1e6
 
                 self.module_E34.serial_port.write(data)
                 success=self.module_E34.wait_aux_rising_timeout(2000)
 
                 time.sleep(self.DELAY_MAIN_LOOP)
             
-                t_ms_after=time.time_ns() / 1e6
-                print(t_ms_after-t_ms_now)
+                # t_ms_after=time.time_ns() / 1e6
+                # print(t_ms_after-t_ms_now)
             except Exception as ex:
                 # print("asasasasasa")
                 raise ex
