@@ -56,7 +56,11 @@ class controller:
         cftx=self.config["transmitter"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
-    def start(self):
+    def deinit(self):
+        self.module_E34.deinit()
+        GPIO.cleanup()
+
+    def init(self):
         GPIO.setmode(GPIO.BOARD)        
         self.module_E34.init()
         # self.module_E34.init0()
@@ -242,7 +246,8 @@ if __name__ == "__main__":
     ctrlr=controller(path_config)
 
     try:
-        ctrlr.start()
+        ctrlr.init()
     except Exception as ex:
         logging.error(traceback.format_exc())
-
+    finally:
+        ctrlr.deinit()
