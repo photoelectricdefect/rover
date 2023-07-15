@@ -1,6 +1,6 @@
 {
     "reciever":{
-        "device":"/dev/ttyUSB0",
+        "device":"/dev/ttyAMA0",
         "baud-rate":115200,
         "pin_aux":11,    
         "pin_m0":15,    
