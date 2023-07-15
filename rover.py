@@ -109,7 +109,11 @@ class rover:
         cftx=self.config["reciever"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
-    def start(self):
+    def deinit(self):
+        self.module_E34.deinit()
+        GPIO.cleanup()
+
+    def init(self):
         GPIO.setmode(GPIO.BOARD)
 
         GPIO.setup(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.OUT)
@@ -150,9 +154,6 @@ class rover:
         threading.excepthook = self.thread_excepthook
 
         self.thread_main_loop.join()
-
-        self.module_E34.deinit()
-        GPIO.cleanup()
 
     def load_config(self,path_config):
         f=open(path_config)
@@ -390,6 +391,9 @@ if __name__ == "__main__":
     rvr=rover(path_config)
     
     try:
-        rvr.start()
+        rvr.init()
     except Exception as ex:
         logging.error(traceback.format_exc())
+    finally:
+        print("deinited")
+        rvr.deinit()
