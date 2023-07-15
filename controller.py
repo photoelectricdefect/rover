@@ -58,8 +58,8 @@ class controller:
 
     def start(self):
         GPIO.setmode(GPIO.BOARD)        
-        # self.module_E34.init()
-        self.module_E34.init0()
+        self.module_E34.init()
+        # self.module_E34.init0()
 
         self.thread_loop_input = threading.Thread(target=self.loop_input)
         self.thread_loop_input.start()
@@ -105,13 +105,7 @@ class controller:
                 # self.module_E34.serial_port.write(data)
                 t_ms_now=time.time_ns() / 1e6
 
-
-                print(data)
-
                 self.module_E34.serial_port.write(data)
-
-                print(data)
-
                 success=self.module_E34.wait_aux_rising_timeout(2000)
 
                 time.sleep(self.DELAY_MAIN_LOOP)
@@ -126,7 +120,7 @@ class controller:
                 # if main_loop_alive():                
                 #     time.sleep(self.DELAY_RESTART_MAIN_LOOP)
 
-    #Microsoft Xbox One X pad
+    #Microsoft Xbox Series S|X Controller
 
     def loop_input(self):
         def loop_input_alive():

@@ -197,7 +197,8 @@ class rover:
                     self.motion_state["omega_L"]=omega_L
                     self.motion_state["omega_R"]=omega_R
 
-                print(self.motion_state)
+                if self.motion_state["omega_R"] > 0.001:
+                    print(self.motion_state)
 
                     # DT_ROVER_MOTION_HALT_S=0.8
                     # N_STEPS_ROVER_MOTION_HALT=50
