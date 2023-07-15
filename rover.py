@@ -212,12 +212,19 @@ class rover:
                 omega_L=self.motion_state["omega_L"]
                 omega_R=self.motion_state["omega_R"]
 
+                print("omega_L")
+                print(omega_L)
+                print("omega_R")
+                print(omega_R)
+
                 if omega_L < self.OMEGA_MIN and omega_R < self.OMEGA_MIN:
                     self.set_left_motors_stationary()
                     self.set_right_motors_stationary()
                 else:
                     self.set_left_motors_clockwise()
                     self.set_right_motors_counter_clockwise()
+                
+                
                     # DT_ROVER_MOTION_HALT_S=0.8
                     # N_STEPS_ROVER_MOTION_HALT=50
 
