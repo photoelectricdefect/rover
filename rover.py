@@ -24,15 +24,15 @@ class rover:
     PIN_PWM_MOTOR_RIGHT_FRONT = 33
     PIN_PWM_MOTOR_RIGHT_BACK = 35
 
-    PIN_MOTOR_LEFT_FRONT_A = 19
-    PIN_MOTOR_LEFT_FRONT_B = 21
-    PIN_MOTOR_LEFT_BACK_A = 23
-    PIN_MOTOR_LEFT_BACK_B = 37
+    PIN_MOTOR_LEFT_FRONT_A = 32
+    PIN_MOTOR_LEFT_FRONT_B = 36
+    PIN_MOTOR_LEFT_BACK_A = 37
+    PIN_MOTOR_LEFT_BACK_B = 23
 
-    PIN_MOTOR_RIGHT_FRONT_A = 32
-    PIN_MOTOR_RIGHT_FRONT_B = 36
-    PIN_MOTOR_RIGHT_BACK_A = 38
-    PIN_MOTOR_RIGHT_BACK_B = 40
+    PIN_MOTOR_RIGHT_FRONT_A = 38
+    PIN_MOTOR_RIGHT_FRONT_B = 40
+    PIN_MOTOR_RIGHT_BACK_A = 19
+    PIN_MOTOR_RIGHT_BACK_B = 21
 
 
     # PWM_CHANNEL_MOTOR_LEFT = 0 
@@ -96,7 +96,7 @@ class rover:
 
     DELAY_RESTART_MAIN_LOOP=3
     DELAY_RESTART_LOOP_INPUT=3
-    DELAY_MAIN_LOOP=0.005
+    DELAY_MAIN_LOOP=0.01
     DELAY_INPUT_LOOP=0.001
 
     module_E34=None
@@ -207,25 +207,31 @@ class rover:
                     self.motion_state["omega_L"]=omega_L
                     self.motion_state["omega_R"]=omega_R
 
+                # self.set_left_motors_clockwise()
+                # self.set_right_motors_counter_clockwise()
+                # self.set_pwm_left_motors(100)
+                # self.set_pwm_right_motors(100)
+
+                # continue
+
                 if self.motion_state["omega_R"] > 0.001:
                     print(self.motion_state)
 
                 omega_L=self.motion_state["omega_L"]
                 omega_R=self.motion_state["omega_R"]
 
-                print("omega_L")
-                print(omega_L)
-                print("omega_R")
-                print(omega_R)
-
                 if omega_L < self.OMEGA_MIN and omega_R < self.OMEGA_MIN:
+                    print("AAAAAAAAAAAA")
                     self.set_left_motors_stationary()
                     self.set_right_motors_stationary()
                 else:
+                    print("BBBBBBBBBBBB")
                     self.set_left_motors_clockwise()
                     self.set_right_motors_counter_clockwise()
                 
-                
+                self.set_pwm_left_motors(omega_L*100)
+                self.set_pwm_right_motors(omega_R*100)
+
                     # DT_ROVER_MOTION_HALT_S=0.8
                     # N_STEPS_ROVER_MOTION_HALT=50
 
@@ -266,6 +272,8 @@ class rover:
 
                 # self.pwm_left.ChangeDutyCycle(abs_left*100)
                 # self.pwm_right.ChangeDutyCycle(abs_right*100)
+                
+                
                 time.sleep(self.DELAY_MAIN_LOOP)
             except Exception as ex:
                 raise ex
@@ -369,6 +377,21 @@ class rover:
         GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_B, GPIO.HIGH)
         GPIO.output(self.PIN_MOTOR_RIGHT_BACK_A, GPIO.LOW)
         GPIO.output(self.PIN_MOTOR_RIGHT_BACK_B, GPIO.HIGH)
+
+
+
+    def set_pwm_left_motors(self,duty):
+        self.pwm_motor_left_front.ChangeDutyCycle(duty)
+        self.pwm_motor_left_back.ChangeDutyCycle(duty)
+        print("duty_L")
+        print(duty)
+
+    def set_pwm_right_motors(self,duty): 
+        self.pwm_motor_right_front.ChangeDutyCycle(duty)
+        self.pwm_motor_right_back.ChangeDutyCycle(duty)
+        print("duty_R")
+        print(duty)
+
 
 
 def print_ex(ex):
