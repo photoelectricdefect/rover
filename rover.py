@@ -38,7 +38,7 @@ class rover:
     # PIN_MOTOR_RIGHT_BACK_B = 21
 
     PIN_MOTOR_RIGHT_BACK_A = 37
-    PIN_MOTOR_RIGHT_BACK_A = 23
+    PIN_MOTOR_RIGHT_BACK_B = 23
 
 
 
