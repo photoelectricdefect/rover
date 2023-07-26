@@ -1,7 +1,7 @@
 {
-    "gamepad-name":"Microsoft Xbox One X pad",
+    "gamepad-name":"Xbox Wireless Controller",
     "transmitter":{
-        "device":"/dev/ttyAMA0",
+        "device":"/dev/ttyS0",
         "baud-rate":115200,
         "pin_aux":11,    
         "pin_m0":15,    

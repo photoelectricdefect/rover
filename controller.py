@@ -108,7 +108,7 @@ class controller:
                 data=(json.dumps(controller_state)+'\n').encode()
                 # self.module_E34.serial_port.write(data)
                 # t_ms_now=time.time_ns() / 1e6
-
+                # print(data)
                 self.module_E34.serial_port.write(data)
                 success=self.module_E34.wait_aux_rising_timeout(2000)
 
@@ -154,6 +154,7 @@ class controller:
                 # print(self.controller_name)
 
                 if device is None:
+                    print("device " + self.controller_name + " not found")
                     time.sleep(self.DELAY_RESTART_LOOP_INPUT)
                     continue
 
@@ -186,6 +187,7 @@ class controller:
                     # event = next(events, None)
                     # print(event)
                     # print("asasasssssssssssssssss")
+                    # print(event)
 
                     if event is not None:
                         # print(event)
