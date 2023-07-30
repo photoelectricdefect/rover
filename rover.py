@@ -219,7 +219,7 @@ class rover:
                 # self.set_pwm_left_motors(100)
                 # self.set_pwm_right_motors(100)
 
-                # continue
+                continue
 
                 if self.motion_state["omega_R"] > 0.001:
                     print(self.motion_state)

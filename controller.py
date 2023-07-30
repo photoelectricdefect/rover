@@ -21,10 +21,13 @@ errcode=0
 class controller:
     MIN_GAS=5e-2
 
-    JOYSTICK_Y = 1
-    JOYSTICK_X = 0
-    GAS_Z = 2
-    GAS_RZ = 5
+    # JOYSTICK_Y = 1
+    # JOYSTICK_X = 0
+
+    CODE_GAS_Z = 2
+    CODE_GAS_RZ = 5
+    CODE_GAS = 9
+    CODE_BRAKE = 10 
 
     DELAY_RESTART_MAIN_LOOP=3
     DELAY_RESTART_LOOP_INPUT=3
@@ -40,11 +43,17 @@ class controller:
     controller_state_lock = threading.Lock()
 
     controller_state = {
-        "joystick_x":0,
-        "joystick_y":0,
+        # "joystick_x":0,
+        # "joystick_y":0,
         "gas":0,
         "gas_r":0
     }
+
+    is_controller_connected=False
+
+    using_bluetooth=False
+
+    debug=False
 
     module_E34=None
     controller_name=None
@@ -52,7 +61,13 @@ class controller:
     def __init__(self,path_config):
         self.load_config(path_config)
         print(self.config)
-        self.controller_name=self.config["gamepad-name"]
+        self.using_bluetooth=self.config["using-bluetooth"]
+
+        if self.using_bluetooth:
+            self.controller_name=self.config["gamepad-name-bluetooth"]
+        else:
+            self.controller_name=self.config["gamepad-name-USB"]
+
         cftx=self.config["transmitter"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
@@ -63,7 +78,6 @@ class controller:
     def init(self):
         GPIO.setmode(GPIO.BOARD)        
         self.module_E34.init()
-        # self.module_E34.init0()
 
         self.thread_loop_input = threading.Thread(target=self.loop_input)
         self.thread_loop_input.start()
@@ -81,7 +95,7 @@ class controller:
     def load_config(self,path_config):
         f=open(path_config)
         self.config=json.load(f)
-        # print(self.config["transmitter"]["parameters"])
+        self.debug=self.config["debug"]
         self.config["transmitter"]["parameters"]=bytearray.fromhex(self.config["transmitter"]["parameters"])
 
     def thread_excepthook(self,args):
@@ -93,6 +107,7 @@ class controller:
         with self.loop_input_alive_lock:            
             self.loop_input_alive=False
 
+    #transmission speed when writing to serial is slower than it should be, figure out why, for now ok
     def main_loop(self):
         def main_loop_alive():
             with self.main_loop_alive_lock:
@@ -101,28 +116,39 @@ class controller:
         while main_loop_alive():
             try:
                 controller_state=None
+                is_controller_connected=False
 
                 with self.controller_state_lock:
-                    controller_state=self.controller_state
+                    is_controller_connected=self.is_controller_connected
 
-                data=(json.dumps(controller_state)+'\n').encode()
-                # self.module_E34.serial_port.write(data)
-                # t_ms_now=time.time_ns() / 1e6
-                # print(data)
-                self.module_E34.serial_port.write(data)
-                success=self.module_E34.wait_aux_rising_timeout(2000)
+                    if is_controller_connected:
+                        controller_state=self.controller_state
+
+                if is_controller_connected:
+                    data=(json.dumps(controller_state)+'\n').encode()
+
+                    # if self.debug:
+                        # t_ms_now=time.time_ns() / 1e6
+
+                        # self.module_E34.serial_port.write(data)
+                        # success=self.module_E34.wait_aux_rising_timeout(2000)
+
+                        # t_ms_after=time.time_ns() / 1e6
+                        # print(t_ms_after-t_ms_now)
+                    # else:
+                    #     self.module_E34.serial_port.write(data)
+                    #     success=self.module_E34.wait_aux_rising_timeout(2000)
+
+                    self.module_E34.serial_port.write(data)
+                    success=self.module_E34.wait_aux_rising_timeout(2000)
+                    
+                    # if self.debug:
+                    #     print(data)
 
                 time.sleep(self.DELAY_MAIN_LOOP)
             
-                # t_ms_after=time.time_ns() / 1e6
-                # print(t_ms_after-t_ms_now)
             except Exception as ex:
-                # print("asasasasasa")
                 raise ex
-                # print_ex(ex)
-
-                # if main_loop_alive():                
-                #     time.sleep(self.DELAY_RESTART_MAIN_LOOP)
 
     #Microsoft Xbox Series S|X Controller
 
@@ -131,13 +157,17 @@ class controller:
             with self.loop_input_alive_lock:
                 return self.loop_input_alive
 
-        keys=util.resolve_ecodes_dict(util.find_ecodes_by_regex(r'ABS_(Y|RZ|X|Z)'))
+        keys=util.resolve_ecodes_dict(util.find_ecodes_by_regex(r'ABS_(Y|RZ|X|Z|GAS|BRAKE)'))
         list_keys=list(keys)
         key_ev_abs=list_keys[0][0]
-        key_abs_y=next((x for x in list_keys[0][1] if x[0]=="ABS_Y"), None)
-        key_abs_x=next((x for x in list_keys[0][1] if x[0]=="ABS_X"), None)
-        key_abs_rz=next((x for x in list_keys[0][1] if x[0]=="ABS_RZ"), None)
-        key_abs_z=next((x for x in list_keys[0][1] if x[0]=="ABS_Z"), None)
+        # key_abs_y=next((x for x in list_keys[0][1] if x[0]=="ABS_Y"), None)
+        # key_abs_x=next((x for x in list_keys[0][1] if x[0]=="ABS_X"), None)
+        
+        name_key_abs_rz="ABS_GAS" if self.using_bluetooth else "ABS_RZ"
+        name_key_abs_z="ABS_BRAKE" if self.using_bluetooth else "ABS_Z"
+        
+        key_abs_rz=next((x for x in list_keys[0][1] if x[0]==name_key_abs_rz), None)
+        key_abs_z=next((x for x in list_keys[0][1] if x[0]==name_key_abs_z), None)
         
         while loop_input_alive():
             gamepad=None
@@ -146,81 +176,56 @@ class controller:
                 devices = [InputDevice(path) for path in list_devices()]
                 device = next((x for x in devices if x.name==self.controller_name), None)
 
-                # for el in devices:
-                #     print(el)
-
-                # print(devices)
-                # print(device)
-                # print(self.controller_name)
-
                 if device is None:
                     print("device " + self.controller_name + " not found")
                     time.sleep(self.DELAY_RESTART_LOOP_INPUT)
+                                        
                     continue
+                else:
+                    with self.controller_state_lock:
+                        self.is_controller_connected=True
+                        self.controller_state["gas"]=0
+                        self.controller_state["gas_r"]=0
 
                 capabilities=device.capabilities(verbose=True)
-                abs_info_y=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_y), None)
-                abs_info_x=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_x), None)
-                abs_info_rz=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_rz), None)
+                # abs_info_y=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_y), None)
+                # abs_info_x=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_x), None)
+                abs_info_rz=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_rz), None)                
                 abs_info_z=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_z), None)
-                gamepad = InputDevice(device.path)
+                
+                if abs_info_rz is None or abs_info_z is None:
+                    print("failed fetching one or more device capabilities")
 
-                # print(abs_info_y)
-                # print(abs_info_x)
-                # print(abs_info_rz)
-                # print(abs_info_z)
+                gamepad = InputDevice(device.path)
 
                 while loop_input_alive():
                     event = gamepad.read_one()
-                    # r, w, x = select([gamepad], [], [])
-                    # events = gamepad.read()
-                    
-                    # r, w, x = select([gamepad], [], [])
-                    # event = None 
-                    
-                    # .read() will surely return a list of events now.
-                    # for ev in gamepad.read():
-                    #     event = ev                    
-                    
-                    # # continue
-                    # print("asas")
-                    # event = next(events, None)
-                    # print(event)
-                    # print("asasasssssssssssssssss")
-                    # print(event)
 
                     if event is not None:
-                        # print(event)
-                        # print(categorize(event))
-
-                        if event.type == ecodes.EV_ABS:
-                            if event.code == self.JOYSTICK_Y and abs_info_y is not None:
-                                normalized_y=min(max(event.value/abs_info_y[1].max,-1),1)
-                                
-                                with self.controller_state_lock:
-                                    self.controller_state["joystick_y"]=normalized_y
-                            elif event.code == self.JOYSTICK_X and abs_info_x is not None:
-                                normalized_x=min(max(event.value/abs_info_x[1].max,-1),1)
-                                
-                                with self.controller_state_lock:
-                                    self.controller_state["joystick_x"]=normalized_x
-                            elif event.code == self.GAS_RZ and abs_info_rz is not None:
+                        # if self.debug:
+                        #     print(event)
+                        #     print(categorize(event))
+                        
+                        if event.type == ecodes.EV_ABS:                                                        
+                            if (not self.using_bluetooth and event.code == self.CODE_ABS_RZ) or (self.using_bluetooth and event.code == self.CODE_GAS):
                                 normalized_rz=min(max(event.value/abs_info_rz[1].max,-1),1)
 
                                 with self.controller_state_lock:
                                     self.controller_state["gas"]=normalized_rz
-                            elif event.code == self.GAS_Z and abs_info_z is not None:
+                            elif (not self.using_bluetooth and event.code == self.CODE_ABS_Z) or (self.using_bluetooth and event.code == self.CODE_BRAKE):
                                 normalized_z=min(max(event.value/abs_info_z[1].max,-1),1)
 
                                 with self.controller_state_lock:
                                     self.controller_state["gas_r"]=normalized_z
-        
-
+                            
                     time.sleep(self.DELAY_INPUT_LOOP)
                     # print(self.controller_state)
             except (OSError) as ex:
                 print(ex)
             finally:
+                with self.controller_state_lock:
+                    self.is_controller_connected=False
+
                 if gamepad is not None:
                     gamepad.close()
 
