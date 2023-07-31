@@ -14,6 +14,7 @@ import logging
 import RPi.GPIO as GPIO
 from E34_2G4D20D import E34_2G4D20D
 import numpy as np
+import collections
 
 # from reciever import reciever
 
@@ -106,6 +107,11 @@ class rover:
     DELAY_MAIN_LOOP=0.01
     DELAY_INPUT_LOOP=0.001
 
+    DELIM_MSG='\n'.encode()[0]
+    SIZE_BUFFER_MSG=128
+
+    debug=False
+
     module_E34=None
     # controller_name=None
     
@@ -165,6 +171,7 @@ class rover:
     def load_config(self,path_config):
         f=open(path_config)
         self.config=json.load(f)
+        self.debug=self.config["debug"]
         self.config["reciever"]["parameters"]=bytearray.fromhex(self.config["reciever"]["parameters"])
 
     def thread_excepthook(self,args):
@@ -297,29 +304,66 @@ class rover:
             with self.loop_input_alive_lock:
                 return self.loop_input_alive
         
+        buffer_msg = collections.deque(maxlen=self.SIZE_BUFFER_MSG)
+
         while loop_input_alive():
             try:
-                t_ms_now=time.time_ns() / 1e6
+                data=None
 
-                # self.controller_state["gas"]=1
-                # self.controller_state["gas_r"]=1
+                if self.debug:
+                    t_ms_now=time.time_ns() / 1e6
 
-                print("in_waiting")
-                print(self.module_E34.serial_port.in_waiting)
+                    print("self.module_E34.serial_port.in_waiting")
+                    print(self.module_E34.serial_port.in_waiting)
+                    data=self.module_E34.serial_port.read(self.module_E34.serial_port.in_waiting)
 
-                data=self.module_E34.serial_port.read_until('\n'.encode())
-                # data=self.module_E34.serial_port.read(100)
-                t_ms_after=time.time_ns() / 1e6
-                # print(t_ms_after-t_ms_now)
+                    t_ms_after=time.time_ns() / 1e6
+                    print(t_ms_after-t_ms_now)
+                else:
+                    # data=self.module_E34.serial_port.read_until('\n'.encode()) #very slow for some reason, do not do
+                    data=self.module_E34.serial_port.read(self.module_E34.serial_port.in_waiting)
 
-                print(data)
+                n_msg=0
 
-                # params = json.loads(data)
+                for i in range(len(data)):
+                    buffer_msg.append(data[i])
 
-                # with self.controller_state_lock:
-                #     self.is_input_timed_out=False
-                #     self.controller_state["gas"]=params["gas"]
-                #     self.controller_state["gas_r"]=params["gas_r"]
+                    if data[i] == self.DELIM_MSG:
+                        n_msg+=1
+
+                if n_msg > 0:
+                    buffer_msg_out = collections.deque(maxlen=self.SIZE_BUFFER_MSG)
+                    n_delim_detected=0
+                    n_bytes_relocated=0
+
+                    while len(buffer_msg) > n_bytes_relocated:
+                        val=buffer_msg.pop()
+
+                        if val == self.DELIM_MSG:
+                            n_delim_detected+=1
+
+                        if n_delim_detected == 0:
+                            buffer_msg.appendleft(val)
+                            n_bytes_relocated+=1
+                        elif n_delim_detected == 1:
+                            buffer_msg_out.append(val)
+
+                    if len(buffer_msg_out) > 0:
+                        msg=bytearray(len(buffer_msg_out))
+                        pos_msg=0
+
+                        while len(buffer_msg_out) > 0:
+                            msg[pos_msg]=buffer_msg_out.pop()
+                            pos_msg+=1
+
+                        print(msg)
+
+                        params = json.loads(msg)
+
+                        with self.controller_state_lock:
+                            self.is_input_timed_out=False
+                            self.controller_state["gas"]=params["gas"]
+                            self.controller_state["gas_r"]=params["gas_r"]
 
                 time.sleep(self.DELAY_INPUT_LOOP)
             except (ValueError) as ex:
@@ -417,12 +461,6 @@ def print_ex(ex):
 if __name__ == "__main__":
     argc=len(sys.argv)
 
-    # if argc < 2: 
-    #     display_usage()
-    #     sys.exit(1)
-
-    # controller_name=sys.argv[1]
-    # controller=tank_controller(controller_name)
     path_config="config/config-rover.json"
     rvr=rover(path_config)
     

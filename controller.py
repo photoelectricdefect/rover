@@ -139,10 +139,6 @@ class controller:
                         self.module_E34.serial_port.write(data)
                         success=self.module_E34.wait_aux_rising_timeout(2000)
 
-                    # self.module_E34.serial_port.write(data)
-                    # success=self.module_E34.wait_aux_rising_timeout(2000)
-                    
-
                     if self.debug:
                         print(success)
                         print(data)
@@ -151,8 +147,6 @@ class controller:
             
             except Exception as ex:
                 raise ex
-
-    #Microsoft Xbox Series S|X Controller
 
     def loop_input(self):
         def loop_input_alive():
@@ -242,14 +236,6 @@ def display_usage():
 
 if __name__ == "__main__":
     argc=len(sys.argv)
-
-    # if argc < 2: 
-    #     display_usage()
-    #     sys.exit(1)
-
-    # controller_name=sys.argv[1]
-    # controller=tank_controller(controller_name)
-    # print('here i am nignog')
 
     path_config="config/config-controller.json"
     ctrlr=controller(path_config)
