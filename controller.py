@@ -127,23 +127,25 @@ class controller:
                 if is_controller_connected:
                     data=(json.dumps(controller_state)+'\n').encode()
 
-                    # if self.debug:
-                        # t_ms_now=time.time_ns() / 1e6
+                    if self.debug:
+                        t_ms_now=time.time_ns() / 1e6
 
-                        # self.module_E34.serial_port.write(data)
-                        # success=self.module_E34.wait_aux_rising_timeout(2000)
+                        self.module_E34.serial_port.write(data)
+                        success=self.module_E34.wait_aux_rising_timeout(2000)
 
-                        # t_ms_after=time.time_ns() / 1e6
-                        # print(t_ms_after-t_ms_now)
-                    # else:
-                    #     self.module_E34.serial_port.write(data)
-                    #     success=self.module_E34.wait_aux_rising_timeout(2000)
+                        t_ms_after=time.time_ns() / 1e6
+                        print(t_ms_after-t_ms_now)
+                    else:
+                        self.module_E34.serial_port.write(data)
+                        success=self.module_E34.wait_aux_rising_timeout(2000)
 
-                    self.module_E34.serial_port.write(data)
-                    success=self.module_E34.wait_aux_rising_timeout(2000)
+                    # self.module_E34.serial_port.write(data)
+                    # success=self.module_E34.wait_aux_rising_timeout(2000)
                     
-                    # if self.debug:
-                    #     print(data)
+
+                    if self.debug:
+                        print(success)
+                        print(data)
 
                 time.sleep(self.DELAY_MAIN_LOOP)
             

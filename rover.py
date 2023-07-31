@@ -219,6 +219,8 @@ class rover:
                 # self.set_pwm_left_motors(100)
                 # self.set_pwm_right_motors(100)
 
+                # print(self.motion_state)
+
                 continue
 
                 if self.motion_state["omega_R"] > 0.001:
@@ -297,14 +299,17 @@ class rover:
         
         while loop_input_alive():
             try:
-                # t_ms_now=time.time_ns() / 1e6
+                t_ms_now=time.time_ns() / 1e6
 
                 # self.controller_state["gas"]=1
                 # self.controller_state["gas_r"]=1
 
 
                 data=self.module_E34.serial_port.read_until('\n'.encode())
-                # print(data)
+                t_ms_after=time.time_ns() / 1e6
+                # print(t_ms_after-t_ms_now)
+
+                print(data)
 
                 params = json.loads(data)
 
@@ -314,9 +319,8 @@ class rover:
                     self.controller_state["gas_r"]=params["gas_r"]
 
                 time.sleep(self.DELAY_INPUT_LOOP)
-                # t_ms_after=time.time_ns() / 1e6
-                # print(t_ms_after-t_ms_now)
             except (ValueError) as ex:
+                print("err")
                 with self.controller_state_lock:
                     self.is_input_timed_out=True
             except (KeyError) as ex:
