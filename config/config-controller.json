@@ -1,6 +1,6 @@
 {
     "debug":true,
-    "gamepad-name-USB":"Xbox Wireless Controller",
+    "gamepad-name-USB":"Microsoft Xbox Series S|X Controller",
     "gamepad-name-bluetooth":"Xbox Wireless Controller",
     "using-bluetooth":true,
     "transmitter":{
