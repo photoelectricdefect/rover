@@ -107,7 +107,7 @@ class controller:
         with self.loop_input_alive_lock:            
             self.loop_input_alive=False
 
-    #transmission speed when writing to serial is slower than it should be, figure out why, for now ok
+    #sometimes transmission speed when writing to serial is slower than it should be (it randomly drops), figure out why, for now ok
     def main_loop(self):
         def main_loop_alive():
             with self.main_loop_alive_lock:
