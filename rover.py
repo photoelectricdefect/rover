@@ -365,7 +365,8 @@ class rover:
 
                 time.sleep(self.DELAY_INPUT_LOOP)
             except (ValueError) as ex:
-                print("err")
+                print("err parsing json message from reciever")
+                
                 with self.controller_state_lock:
                     self.is_input_timed_out=True
             except (KeyError) as ex:
