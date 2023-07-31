@@ -114,7 +114,6 @@ class E34_2G4D20D():
             self.set_mode("half-duplex")        
             
             if not self.wait_aux_rising_timeout(2000):
-                print("e")
                 err=True
                 break
 

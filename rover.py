@@ -304,19 +304,22 @@ class rover:
                 # self.controller_state["gas"]=1
                 # self.controller_state["gas_r"]=1
 
+                print("in_waiting")
+                print(self.module_E34.serial_port.in_waiting)
 
                 data=self.module_E34.serial_port.read_until('\n'.encode())
+                # data=self.module_E34.serial_port.read(100)
                 t_ms_after=time.time_ns() / 1e6
                 # print(t_ms_after-t_ms_now)
 
                 print(data)
 
-                params = json.loads(data)
+                # params = json.loads(data)
 
-                with self.controller_state_lock:
-                    self.is_input_timed_out=False
-                    self.controller_state["gas"]=params["gas"]
-                    self.controller_state["gas_r"]=params["gas_r"]
+                # with self.controller_state_lock:
+                #     self.is_input_timed_out=False
+                #     self.controller_state["gas"]=params["gas"]
+                #     self.controller_state["gas_r"]=params["gas_r"]
 
                 time.sleep(self.DELAY_INPUT_LOOP)
             except (ValueError) as ex:
