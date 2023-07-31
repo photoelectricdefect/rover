@@ -354,7 +354,8 @@ class rover:
                             msg[pos_msg]=buffer_msg_out.pop()
                             pos_msg+=1
 
-                        print(msg)
+                        if self.debug:
+                            print(msg)
 
                         params = json.loads(msg)
 

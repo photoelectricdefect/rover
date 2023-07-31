@@ -1,5 +1,5 @@
 {
-    "debug":false,
+    "debug":true,
     "reciever":{
         "device":"/dev/serial0",
         "baud-rate":115200,
