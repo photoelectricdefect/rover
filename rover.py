@@ -313,8 +313,6 @@ class rover:
                 if self.debug:
                     t_ms_now=time.time_ns() / 1e6
 
-                    print("self.module_E34.serial_port.in_waiting")
-                    print(self.module_E34.serial_port.in_waiting)
                     data=self.module_E34.serial_port.read(self.module_E34.serial_port.in_waiting)
 
                     t_ms_after=time.time_ns() / 1e6
