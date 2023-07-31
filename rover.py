@@ -16,8 +16,6 @@ from E34_2G4D20D import E34_2G4D20D
 import numpy as np
 import collections
 
-# from reciever import reciever
-
 class rover:
     PIN_PWM_MOTOR_LEFT_FRONT = 29
     PIN_PWM_MOTOR_LEFT_BACK = 31
@@ -27,47 +25,17 @@ class rover:
 
     PIN_MOTOR_LEFT_FRONT_A = 32
     PIN_MOTOR_LEFT_FRONT_B = 36
-    # PIN_MOTOR_LEFT_BACK_A = 37
-    # PIN_MOTOR_LEFT_BACK_B = 23
 
     PIN_MOTOR_LEFT_BACK_A = 19
     PIN_MOTOR_LEFT_BACK_B = 21
 
     PIN_MOTOR_RIGHT_FRONT_A = 38
     PIN_MOTOR_RIGHT_FRONT_B = 40
-    # PIN_MOTOR_RIGHT_BACK_A = 19
-    # PIN_MOTOR_RIGHT_BACK_B = 21
 
     PIN_MOTOR_RIGHT_BACK_A = 37
     PIN_MOTOR_RIGHT_BACK_B = 23
 
-
-
-    # PWM_CHANNEL_MOTOR_LEFT = 0 
-    # PWM_CHANNEL_MOTOR_RIGHT = 1 
-
     PWM_FREQUENCY = 2000 
-    # PWM_RESOLUTION = 8
-
-    # MIN_GAS=5e-2
-
-    # JOYSTICK_Y = 1
-    # JOYSTICK_RZ = 5
-
-    # BTN_GAS = 9
-    # BTN_BRAKE = 10
-    # BTN_TR = 311
-
-    # DELAY_RESTART_MAIN_LOOP=3
-    # DELAY_RESTART_input_loop=3
-    # DELAY_MAIN_LOOP=0.05
-    # DELAY_START=2
-    
-    # main_loop_alive=True
-    # rx_loop_alive=True
-
-    # main_loop_alive_lock = threading.Lock()
-    # rx_loop_alive_lock = threading.Lock()
 
     controller_state_lock = threading.Lock()
     controller_state = {
@@ -98,10 +66,6 @@ class rover:
     T_ROVER_MOTION_HALT_S=0.8
     T_ROVER_MOTION_HALT_NS=T_ROVER_MOTION_HALT_S*1e9
 
-    # N_STEPS_ROVER_MOTION_HALT_MAX=50
-
-    n_steps_rover_motion_halt=0
-
     DELAY_RESTART_MAIN_LOOP=3
     DELAY_RESTART_LOOP_INPUT=3
     DELAY_MAIN_LOOP=0.01
@@ -113,12 +77,10 @@ class rover:
     debug=False
 
     module_E34=None
-    # controller_name=None
     
     def __init__(self,path_config):
         self.load_config(path_config)
         print(self.config)
-        # self.controller_name=self.config["gamepad-name"]
         cftx=self.config["reciever"]        
         self.module_E34=E34_2G4D20D(cftx["device"],cftx["baud-rate"],cftx["pin_m0"],cftx["pin_m1"],cftx["pin_aux"],cftx["parameters"])
 
@@ -450,13 +412,11 @@ class rover:
         print("duty_R")
         print(duty)
 
-
-
 def print_ex(ex):
     print(''.join(traceback.format_exception(etype=type(ex), value=ex, tb=ex.__traceback__)))
 
-# def display_usage():
-#     print("\nUsage: "+os.path.basename(__file__)+" [XBOX Name]\n")
+def display_usage():
+    pass
 
 if __name__ == "__main__":
     argc=len(sys.argv)

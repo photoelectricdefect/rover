@@ -156,8 +156,6 @@ class controller:
         keys=util.resolve_ecodes_dict(util.find_ecodes_by_regex(r'ABS_(Y|RZ|X|Z|GAS|BRAKE)'))
         list_keys=list(keys)
         key_ev_abs=list_keys[0][0]
-        # key_abs_y=next((x for x in list_keys[0][1] if x[0]=="ABS_Y"), None)
-        # key_abs_x=next((x for x in list_keys[0][1] if x[0]=="ABS_X"), None)
         
         name_key_abs_rz="ABS_GAS" if self.using_bluetooth else "ABS_RZ"
         name_key_abs_z="ABS_BRAKE" if self.using_bluetooth else "ABS_Z"
@@ -184,8 +182,6 @@ class controller:
                         self.controller_state["gas_r"]=0
 
                 capabilities=device.capabilities(verbose=True)
-                # abs_info_y=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_y), None)
-                # abs_info_x=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_x), None)
                 abs_info_rz=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_rz), None)                
                 abs_info_z=next((x for x in capabilities[key_ev_abs] if x[0]==key_abs_z), None)
                 
@@ -194,13 +190,15 @@ class controller:
 
                 gamepad = InputDevice(device.path)
 
+                raise Exception("negro")
+
                 while loop_input_alive():
                     event = gamepad.read_one()
 
                     if event is not None:
-                        # if self.debug:
-                        #     print(event)
-                        #     print(categorize(event))
+                        if self.debug:
+                            print(event)
+                            print(categorize(event))
                         
                         if event.type == ecodes.EV_ABS:                                                        
                             if (not self.using_bluetooth and event.code == self.CODE_ABS_RZ) or (self.using_bluetooth and event.code == self.CODE_GAS):
@@ -215,7 +213,9 @@ class controller:
                                     self.controller_state["gas_r"]=normalized_z
                             
                     time.sleep(self.DELAY_INPUT_LOOP)
-                    # print(self.controller_state)
+
+                    if self.debug:
+                        print(self.controller_state)
             except (OSError) as ex:
                 print(ex)
             finally:
@@ -232,7 +232,7 @@ def print_ex(ex):
     print(''.join(traceback.format_exception(etype=type(ex), value=ex, tb=ex.__traceback__)))
 
 def display_usage():
-    print("\nUsage: "+os.path.basename(__file__)+" [XBOX Name]\n")
+    pass
 
 if __name__ == "__main__":
     argc=len(sys.argv)
