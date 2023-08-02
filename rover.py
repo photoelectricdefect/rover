@@ -120,14 +120,14 @@ class rover:
         self.module_E34.init()
         self.module_E34.serial_port.timeout=self.TIMEOUT_S_SERIAL_READ
 
+        threading.excepthook = self.thread_excepthook
+
         self.thread_loop_input = threading.Thread(target=self.loop_input)
         self.thread_loop_input.start()
         
         self.thread_main_loop = threading.Thread(target=self.main_loop)
         self.thread_main_loop.start()
     
-        threading.excepthook = self.thread_excepthook
-
         self.thread_main_loop.join()
 
     def load_config(self,path_config):
@@ -151,114 +151,65 @@ class rover:
                 return self.main_loop_alive
 
         while main_loop_alive():
-            try:
-                is_input_timed_out=False
-                controller_state=None
+            is_input_timed_out=False
+            controller_state=None
 
-                with self.controller_state_lock:
-                    is_input_timed_out=self.is_input_timed_out
-                    
-                    if not is_input_timed_out:
-                        controller_state=self.controller_state
-
-                if is_input_timed_out:
-                    timestamp_ns_now=time.time_ns()
-
-                    if self.timestamp_ns_input_timed_out < 0:
-                        self.timestamp_ns_input_timed_out = timestamp_ns_now
-                        self.motion_state_saved = self.motion_state
-                    elif self.timestamp_ns_input_timed_out < timestamp_ns_now:
-                        dt_input_timed_out_ns=timestamp_ns_now-self.timestamp_ns_input_timed_out
-
-                        if dt_input_timed_out_ns < self.T_ROVER_MOTION_HALT_NS:
-                            weight=dt_input_timed_out_ns/self.T_ROVER_MOTION_HALT_NS
-                            self.motion_state["omega_L"]=self.motion_state_saved["omega_L"]*(1-weight)
-                            self.motion_state["omega_R"]=self.motion_state_saved["omega_R"]*(1-weight)
-                        else:
-                            self.motion_state["omega_L"]=0
-                            self.motion_state["omega_R"]=0
-                else:
-                    self.timestamp_ns_input_timed_out = -1
-                    (omega_L,omega_R)=self.get_control_inputs(controller_state)
-                    self.motion_state["omega_L"]=omega_L
-                    self.motion_state["omega_R"]=omega_R
-
-                # self.set_left_motors_clockwise()
-                # self.set_right_motors_counter_clockwise()
-                # self.set_pwm_left_motors(100)
-                # self.set_pwm_right_motors(100)
-
-                # print(self.motion_state)
-
-                continue
-
-                if self.motion_state["omega_R"] > 0.001:
-                    print(self.motion_state)
-
-                omega_L=self.motion_state["omega_L"]
-                omega_R=self.motion_state["omega_R"]
-
-                if omega_L < self.OMEGA_MIN and omega_R < self.OMEGA_MIN:
-                    print("AAAAAAAAAAAA")
-                    self.set_left_motors_stationary()
-                    self.set_right_motors_stationary()
-                else:
-                    print("BBBBBBBBBBBB")
-                    self.set_left_motors_clockwise()
-                    self.set_right_motors_counter_clockwise()
+            with self.controller_state_lock:
+                is_input_timed_out=self.is_input_timed_out
                 
-                self.set_pwm_left_motors(omega_L*100)
-                self.set_pwm_right_motors(omega_R*100)
+                if not is_input_timed_out:
+                    controller_state=self.controller_state
 
-                    # DT_ROVER_MOTION_HALT_S=0.8
-                    # N_STEPS_ROVER_MOTION_HALT=50
+            if is_input_timed_out:
+                timestamp_ns_now=time.time_ns()
 
-                    # omega_L=motion_state["omega_L"]
-                    # omega_R=motion_state["omega_R"]
-                                        
-                    # motion_state = {
-                    #     "omega_L":0,
-                    #     "omega_R":0,
-                    # }
+                if self.timestamp_ns_input_timed_out < 0:
+                    self.timestamp_ns_input_timed_out = timestamp_ns_now
+                    self.motion_state_saved = self.motion_state
+                elif self.timestamp_ns_input_timed_out < timestamp_ns_now:
+                    dt_input_timed_out_ns=timestamp_ns_now-self.timestamp_ns_input_timed_out
 
-                # left=0
-                # right=0
-                
-                # with self.motion_state_lock:
-                #     left=self.motion_state["left"]
-                #     right=self.motion_state["right"]
-                
-                # abs_left=abs(left)
-                # abs_right=abs(right)
+                    if dt_input_timed_out_ns < self.T_ROVER_MOTION_HALT_NS:
+                        weight=dt_input_timed_out_ns/self.T_ROVER_MOTION_HALT_NS
+                        self.motion_state["omega_L"]=self.motion_state_saved["omega_L"]*(1-weight)
+                        self.motion_state["omega_R"]=self.motion_state_saved["omega_R"]*(1-weight)
+                    else:
+                        self.motion_state["omega_L"]=0
+                        self.motion_state["omega_R"]=0
+            else:
+                self.timestamp_ns_input_timed_out = -1
+                (omega_L,omega_R)=self.get_controller_inputs(controller_state)
+                self.motion_state["omega_L"]=omega_L
+                self.motion_state["omega_R"]=omega_R
 
-                # self.set_left_motor_stationary()
-                # self.set_right_motor_stationary()
+            # self.set_left_motors_clockwise()
+            # self.set_right_motors_counter_clockwise()
+            # self.set_pwm_left_motors(100)
+            # self.set_pwm_right_motors(100)
 
-                # if abs_left<self.MIN_GAS or abs_right<self.MIN_GAS: 
-                #     self.set_left_motor_stationary()
-                #     self.set_right_motor_stationary()
-                # else:
-                #     if(left>0):
-                #         self.set_left_motor_counter_clockwise()
-                #     else:
-                #         self.set_left_motor_clockwise()
+            # print(self.motion_state)
 
-                #     if(right>0):
-                #         self.set_right_motor_counter_clockwise()
-                #     else:
-                #         self.set_right_motor_clockwise()
+            continue
 
-                # self.pwm_left.ChangeDutyCycle(abs_left*100)
-                # self.pwm_right.ChangeDutyCycle(abs_right*100)
-                
-                
-                time.sleep(self.DELAY_MAIN_LOOP)
-            except Exception as ex:
-                raise ex
-                # print_ex(ex)
+            if self.motion_state["omega_R"] > 0.001:
+                print(self.motion_state)
 
-                # if main_loop_alive():                
-                #     time.sleep(self.DELAY_RESTART_MAIN_LOOP)
+            omega_L=self.motion_state["omega_L"]
+            omega_R=self.motion_state["omega_R"]
+
+            if omega_L < self.OMEGA_MIN and omega_R < self.OMEGA_MIN:
+                print("AAAAAAAAAAAA")
+                self.set_left_motors_stationary()
+                self.set_right_motors_stationary()
+            else:
+                print("BBBBBBBBBBBB")
+                self.set_left_motors_clockwise()
+                self.set_right_motors_counter_clockwise()
+            
+            self.set_pwm_left_motors(omega_L*100)
+            self.set_pwm_right_motors(omega_R*100)                
+            
+            time.sleep(self.DELAY_MAIN_LOOP)
 
 
     def loop_input(self):
@@ -335,22 +286,7 @@ class rover:
             except (KeyError) as ex:
                 pass
 
-    # Update
-    def get_control_inputs(self,controller_state):
-        # sign_joystick_x=np.sign(joystick_x)
-        # omega_l=0
-        # omega_r=0
-
-        # if sign_joystick_x < 0:
-        #     omega_l=(1+joystick_x)*gas
-        #     omega_r=gas
-        # elif sign_joystick_x == 0:
-        #     omega_l=gas
-        #     omega_r=gas
-        # else:
-        #     omega_l=gas
-        #     omega_r=(1-joystick_x)*gas
-
+    def get_controller_inputs(self,controller_state):
         gas=controller_state["gas"]
         gas_r=controller_state["gas_r"]
 

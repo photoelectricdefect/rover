@@ -43,8 +43,6 @@ class controller:
     controller_state_lock = threading.Lock()
 
     controller_state = {
-        # "joystick_x":0,
-        # "joystick_y":0,
         "gas":0,
         "gas_r":0
     }
@@ -79,13 +77,13 @@ class controller:
         GPIO.setmode(GPIO.BOARD)        
         self.module_E34.init()
 
+        threading.excepthook = self.thread_excepthook
+
         self.thread_loop_input = threading.Thread(target=self.loop_input)
         self.thread_loop_input.start()
         
         self.thread_main_loop = threading.Thread(target=self.main_loop)
         self.thread_main_loop.start()
-
-        threading.excepthook = self.thread_excepthook
 
         self.thread_main_loop.join()
 
@@ -107,6 +105,7 @@ class controller:
         with self.loop_input_alive_lock:            
             self.loop_input_alive=False
 
+
     #sometimes transmission speed when writing to serial is slower than it should be (it randomly drops), figure out why, for now ok
     def main_loop(self):
         def main_loop_alive():
@@ -114,39 +113,35 @@ class controller:
                 return self.main_loop_alive
 
         while main_loop_alive():
-            try:
-                controller_state=None
-                is_controller_connected=False
+            controller_state=None
+            is_controller_connected=False
 
-                with self.controller_state_lock:
-                    is_controller_connected=self.is_controller_connected
-
-                    if is_controller_connected:
-                        controller_state=self.controller_state
+            with self.controller_state_lock:
+                is_controller_connected=self.is_controller_connected
 
                 if is_controller_connected:
-                    data=(json.dumps(controller_state)+'\n').encode()
+                    controller_state=self.controller_state
 
-                    if self.debug:
-                        t_ms_now=time.time_ns() / 1e6
+            if is_controller_connected:
+                data=(json.dumps(controller_state)+'\n').encode()
 
-                        self.module_E34.serial_port.write(data)
-                        success=self.module_E34.wait_aux_rising_timeout(2000)
+                if self.debug:
+                    t_ms_now=time.time_ns() / 1e6
 
-                        t_ms_after=time.time_ns() / 1e6
-                        print(t_ms_after-t_ms_now)
-                    else:
-                        self.module_E34.serial_port.write(data)
-                        success=self.module_E34.wait_aux_rising_timeout(2000)
+                    self.module_E34.serial_port.write(data)
+                    success=self.module_E34.wait_aux_rising_timeout(2000)
 
-                    if self.debug:
-                        print(success)
-                        print(data)
+                    t_ms_after=time.time_ns() / 1e6
+                    print(t_ms_after-t_ms_now)
+                else:
+                    self.module_E34.serial_port.write(data)
+                    success=self.module_E34.wait_aux_rising_timeout(2000)
 
-                time.sleep(self.DELAY_MAIN_LOOP)
-            
-            except Exception as ex:
-                raise ex
+                if self.debug:
+                    print(success)
+                    print(data)
+
+            time.sleep(self.DELAY_MAIN_LOOP)
 
     def loop_input(self):
         def loop_input_alive():
@@ -190,8 +185,6 @@ class controller:
 
                 gamepad = InputDevice(device.path)
 
-                raise Exception("negro")
-
                 while loop_input_alive():
                     event = gamepad.read_one()
 
@@ -216,8 +209,8 @@ class controller:
 
                     if self.debug:
                         print(self.controller_state)
-            except (OSError) as ex:
-                print(ex)
+            except Exception as ex:
+                logging.error(traceback.format_exc())
             finally:
                 with self.controller_state_lock:
                     self.is_controller_connected=False
