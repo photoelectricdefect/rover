@@ -182,8 +182,6 @@ class rover:
                 self.motion_state["omega_L"]=omega_L
                 self.motion_state["omega_R"]=omega_R
 
-            continue
-
             if self.motion_state["omega_R"] > 0.001:
                 print(self.motion_state)
 
@@ -191,11 +189,9 @@ class rover:
             omega_R=self.motion_state["omega_R"]
 
             if omega_L < self.OMEGA_MIN and omega_R < self.OMEGA_MIN:
-                print("AAAAAAAAAAAA")
                 self.set_left_motors_stationary()
                 self.set_right_motors_stationary()
             else:
-                print("BBBBBBBBBBBB")
                 self.set_left_motors_clockwise()
                 self.set_right_motors_counter_clockwise()
             
@@ -203,7 +199,6 @@ class rover:
             self.set_pwm_right_motors(omega_R*100)                
             
             time.sleep(self.DELAY_MAIN_LOOP)
-
 
     def loop_input(self):
         def loop_input_alive():
