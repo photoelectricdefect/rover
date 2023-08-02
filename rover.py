@@ -17,23 +17,23 @@ import numpy as np
 import collections
 
 class rover:
-    PIN_PWM_MOTOR_LEFT_FRONT = 29
+    PIN_PWM_MOTOR_LEFT_FRONT = 33
     PIN_PWM_MOTOR_LEFT_BACK = 31
 
-    PIN_PWM_MOTOR_RIGHT_FRONT = 33
-    PIN_PWM_MOTOR_RIGHT_BACK = 35
+    PIN_PWM_MOTOR_RIGHT_FRONT = 35
+    PIN_PWM_MOTOR_RIGHT_BACK = 29
 
     PIN_MOTOR_LEFT_FRONT_A = 32
     PIN_MOTOR_LEFT_FRONT_B = 36
 
-    PIN_MOTOR_LEFT_BACK_A = 19
-    PIN_MOTOR_LEFT_BACK_B = 21
+    PIN_MOTOR_LEFT_BACK_A = 23
+    PIN_MOTOR_LEFT_BACK_B = 37
 
     PIN_MOTOR_RIGHT_FRONT_A = 38
     PIN_MOTOR_RIGHT_FRONT_B = 40
 
-    PIN_MOTOR_RIGHT_BACK_A = 37
-    PIN_MOTOR_RIGHT_BACK_B = 23
+    PIN_MOTOR_RIGHT_BACK_A = 19
+    PIN_MOTOR_RIGHT_BACK_B = 21
 
     PWM_FREQUENCY = 2000 
 
@@ -182,7 +182,7 @@ class rover:
                 self.motion_state["omega_L"]=omega_L
                 self.motion_state["omega_R"]=omega_R
 
-            if self.motion_state["omega_R"] > 0.001:
+            if self.motion_state["omega_R"] > 0.001 and self.debug:
                 print(self.motion_state)
 
             omega_L=self.motion_state["omega_L"]
@@ -192,8 +192,8 @@ class rover:
                 self.set_left_motors_stationary()
                 self.set_right_motors_stationary()
             else:
-                self.set_left_motors_clockwise()
-                self.set_right_motors_counter_clockwise()
+                self.set_right_motors_clockwise()
+                self.set_left_motors_counter_clockwise()
             
             self.set_pwm_left_motors(omega_L*100)
             self.set_pwm_right_motors(omega_R*100)                
@@ -292,14 +292,14 @@ class rover:
     def set_left_motors_clockwise(self):
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.HIGH)
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.LOW)
-        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.HIGH)
-        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.LOW)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.HIGH)
 
     def set_left_motors_counter_clockwise(self): 
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.LOW)
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.HIGH)
-        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.LOW)
-        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.HIGH)
+        GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.LOW)
 
     def set_right_motors_stationary(self): 
         GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_A, GPIO.LOW)
@@ -319,19 +319,13 @@ class rover:
         GPIO.output(self.PIN_MOTOR_RIGHT_BACK_A, GPIO.LOW)
         GPIO.output(self.PIN_MOTOR_RIGHT_BACK_B, GPIO.HIGH)
 
-
-
     def set_pwm_left_motors(self,duty):
-        self.pwm_motor_left_front.ChangeDutyCycle(duty)
+        self.pwm_motor_left_front.ChangeDutyCycle(duty*0.5)
         self.pwm_motor_left_back.ChangeDutyCycle(duty)
-        print("duty_L")
-        print(duty)
 
     def set_pwm_right_motors(self,duty): 
-        self.pwm_motor_right_front.ChangeDutyCycle(duty)
-        self.pwm_motor_right_back.ChangeDutyCycle(duty)
-        print("duty_R")
-        print(duty)
+        self.pwm_motor_right_front.ChangeDutyCycle(duty*0.5)
+        self.pwm_motor_right_back.ChangeDutyCycle(duty*0.5)
 
 def print_ex(ex):
     print(''.join(traceback.format_exception(etype=type(ex), value=ex, tb=ex.__traceback__)))
