@@ -182,13 +182,6 @@ class rover:
                 self.motion_state["omega_L"]=omega_L
                 self.motion_state["omega_R"]=omega_R
 
-            # self.set_left_motors_clockwise()
-            # self.set_right_motors_counter_clockwise()
-            # self.set_pwm_left_motors(100)
-            # self.set_pwm_right_motors(100)
-
-            # print(self.motion_state)
-
             continue
 
             if self.motion_state["omega_R"] > 0.001:
@@ -295,7 +288,6 @@ class rover:
 
         return (omega_l,omega_r)
 
-
     def set_left_motors_stationary(self): 
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_A, GPIO.LOW)
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.LOW)
@@ -313,8 +305,6 @@ class rover:
         GPIO.output(self.PIN_MOTOR_LEFT_FRONT_B, GPIO.HIGH)
         GPIO.output(self.PIN_MOTOR_LEFT_BACK_A, GPIO.LOW)
         GPIO.output(self.PIN_MOTOR_LEFT_BACK_B, GPIO.HIGH)
-
-
 
     def set_right_motors_stationary(self): 
         GPIO.output(self.PIN_MOTOR_RIGHT_FRONT_A, GPIO.LOW)
@@ -365,5 +355,4 @@ if __name__ == "__main__":
     except Exception as ex:
         logging.error(traceback.format_exc())
     finally:
-        print("deinited")
         rvr.deinit()
